@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>com.github.vgirotto.prism</id>
-    <name>Prism — IDE Companion for Claude Code</name>
+    <name>Prism - IDE Companion for Claude Code</name>
     <version>1.0.0</version>
     <vendor email="VGirotto@github.com" url="https://github.com/VGirotto/prism-claude-code-plugin">VGirotto</vendor>
 
