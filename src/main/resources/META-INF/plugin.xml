@@ -1,0 +1,172 @@
+<idea-plugin>
+    <id>com.github.vgirotto.prism</id>
+    <name>Prism — IDE Companion for Claude Code</name>
+    <version>1.0.0</version>
+    <vendor email="VGirotto@github.com" url="https://github.com/VGirotto/prism-claude-code-plugin">VGirotto</vendor>
+
+    <description><![CDATA[
+    <p><strong>Prism</strong> — A full-featured IDE companion that integrates the Claude Code CLI directly into your JetBrains IDE.</p>
+
+    <h3>Features</h3>
+    <ul>
+        <li><strong>Interactive Terminal</strong> — Claude Code running inside your IDE with full ANSI color support</li>
+        <li><strong>Claude Changes Panel</strong> — Automatic diff view of files modified per interaction</li>
+        <li><strong>Context Menu</strong> — Explain, Review, Fix, Generate Tests, Refactor</li>
+        <li><strong>Toolbar</strong> — Model (opus/sonnet/haiku), Effort, Cost, Resume, Compact</li>
+        <li><strong>Prompt Templates</strong> — Reusable templates with {selection}, {file}, {language} variables</li>
+        <li><strong>Conversation History</strong> — Browse past conversations with full-text search</li>
+        <li><strong>Multi-Session</strong> — Multiple simultaneous sessions in independent tabs</li>
+        <li><strong>Status Bar Widget</strong> — Shows Claude state (working/idle/stopped)</li>
+        <li><strong>i18n</strong> — English, Portuguese, Spanish</li>
+    </ul>
+
+    <h3>Compatibility</h3>
+    <ul>
+        <li>IntelliJ IDEA (Community &amp; Ultimate)</li>
+        <li>GoLand, WebStorm, PyCharm, CLion, and other JetBrains IDEs</li>
+    </ul>
+
+    <h3>Privacy</h3>
+    <p><strong>No external calls.</strong> Prism is a local visual wrapper for the Claude Code CLI.
+    All data stays on your machine.</p>
+
+    <p>See <a href="https://github.com/VGirotto/prism-claude-code-plugin">GitHub</a> for full documentation.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <h2>v1.0.0 — Initial Release</h2>
+    <ul>
+        <li>Interactive terminal with Claude Code CLI</li>
+        <li>Claude Changes: per-interaction diff view with revert</li>
+        <li>Context menu actions (Explain, Review, Fix, Generate Tests, Refactor)</li>
+        <li>Conversation history with full-text search</li>
+        <li>Multi-session support with independent tabs</li>
+        <li>Prompt templates with variable substitution</li>
+        <li>Status bar widget with session state</li>
+        <li>i18n: English, Portuguese, Spanish</li>
+        <li>CI/CD via GitHub Actions</li>
+    </ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.terminal</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Tool Window -->
+        <toolWindow id="Claude Code"
+                    anchor="bottom"
+                    canCloseContents="true"
+                    factoryClass="com.github.vgirotto.prism.toolwindow.ClaudeToolWindowFactory"
+                    icon="/icons/claude.svg"/>
+
+        <!-- Settings -->
+        <projectConfigurable
+            parentId="tools"
+            instance="com.github.vgirotto.prism.settings.ClaudeSettingsConfigurable"
+            id="com.github.vgirotto.prism.settings"
+            displayName="Prism — Claude Code"/>
+
+        <!-- Application-level services -->
+        <applicationService
+            serviceImplementation="com.github.vgirotto.prism.services.ClaudeSettingsState"/>
+        <applicationService
+            serviceImplementation="com.github.vgirotto.prism.services.PromptTemplateService"/>
+
+        <!-- Project-level services -->
+        <projectService
+            serviceImplementation="com.github.vgirotto.prism.services.ContextProvider"/>
+        <projectService
+            serviceImplementation="com.github.vgirotto.prism.services.FileSnapshotService"/>
+        <projectService
+            serviceImplementation="com.github.vgirotto.prism.services.DiffViewService"/>
+        <projectService
+            serviceImplementation="com.github.vgirotto.prism.services.ConversationHistoryService"/>
+
+        <!-- Status Bar Widget -->
+        <statusBarWidgetFactory
+            id="ClaudeCodeStatus"
+            implementation="com.github.vgirotto.prism.toolwindow.ClaudeStatusBarWidgetFactory"
+            order="after position"/>
+
+        <!-- Notification group -->
+        <notificationGroup id="Prism"
+                           displayType="BALLOON"/>
+    </extensions>
+
+    <applicationListeners>
+        <listener class="com.github.vgirotto.prism.listeners.FileChangeListener"
+                  topic="com.intellij.openapi.vfs.newvfs.BulkFileListener"/>
+    </applicationListeners>
+
+    <actions>
+        <action id="Prism.Open"
+                class="com.github.vgirotto.prism.actions.OpenClaudeAction"
+                text="Toggle Claude Code"
+                description="Toggle Claude Code terminal panel"
+                icon="/icons/claude.svg">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt shift C"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta shift C"/>
+        </action>
+
+<action id="Prism.ShowDiff"
+                class="com.github.vgirotto.prism.actions.ShowDiffAction"
+                text="Show Claude Changes"
+                description="Show diff of changes made by Claude"
+                icon="AllIcons.Actions.Diff">
+            <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="Prism.Open"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift D"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift D"/>
+        </action>
+
+        <action id="Prism.SendSelection"
+                class="com.github.vgirotto.prism.actions.SendSelectionAction"
+                text="Send Selection to Claude"
+                description="Send selected text to Claude Code"
+                icon="/icons/claude.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="Prism.AskClaudeGroup"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift ENTER"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift ENTER"/>
+        </action>
+
+        <action id="Prism.InsertFileRef"
+                class="com.github.vgirotto.prism.actions.InsertFileReferenceAction"
+                text="Insert File Reference in Claude"
+                description="Insert @file reference in Claude Code"
+                icon="/icons/claude.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="Prism.AskClaudeGroup"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift K"/>
+        </action>
+
+        <!-- Ask Claude context menu group -->
+        <group id="Prism.AskClaudeGroup"
+               text="Ask Claude..."
+               description="Send code to Claude with a prompt"
+               icon="/icons/claude.svg"
+               popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+
+            <action id="Prism.Explain"
+                    class="com.github.vgirotto.prism.actions.ExplainCodeAction"
+                    text="Explain"
+                    description="Ask Claude to explain this code"/>
+            <action id="Prism.Review"
+                    class="com.github.vgirotto.prism.actions.ReviewCodeAction"
+                    text="Review"
+                    description="Ask Claude to review this code"/>
+            <action id="Prism.Fix"
+                    class="com.github.vgirotto.prism.actions.FixCodeAction"
+                    text="Fix"
+                    description="Ask Claude to fix this code"/>
+            <action id="Prism.GenerateTests"
+                    class="com.github.vgirotto.prism.actions.GenerateTestsAction"
+                    text="Generate Tests"
+                    description="Ask Claude to write tests for this code"/>
+            <action id="Prism.Refactor"
+                    class="com.github.vgirotto.prism.actions.RefactorCodeAction"
+                    text="Refactor"
+                    description="Ask Claude to refactor this code"/>
+        </group>
+    </actions>
+</idea-plugin>

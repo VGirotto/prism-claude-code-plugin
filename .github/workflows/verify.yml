@@ -1,0 +1,42 @@
+name: Verify Plugin
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [ '17' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Verify plugin structure
+        run: ./gradlew verifyPlugin
+
+      - name: Check plugin compatibility
+        run: ./gradlew runPluginVerifier
+        continue-on-error: true
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-verification
+          path: build/reports/pluginVerifier/
+          retention-days: 30
