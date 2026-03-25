@@ -35,6 +35,14 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+intellijPlatform {
+    pluginVerification {
+        ides {
+            recommended()
+        }
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
 }
@@ -47,12 +55,6 @@ tasks {
 
     buildSearchableOptions {
         enabled = false
-    }
-
-    runPluginVerifier {
-        ides {
-            recommended()
-        }
     }
 
     named<org.jetbrains.intellij.platform.gradle.tasks.PrepareJarSearchableOptionsTask>("prepareJarSearchableOptions") {
