@@ -49,6 +49,12 @@ tasks {
         enabled = false
     }
 
+    runPluginVerifier {
+        ides {
+            recommended()
+        }
+    }
+
     named<org.jetbrains.intellij.platform.gradle.tasks.PrepareJarSearchableOptionsTask>("prepareJarSearchableOptions") {
         enabled = false
     }
