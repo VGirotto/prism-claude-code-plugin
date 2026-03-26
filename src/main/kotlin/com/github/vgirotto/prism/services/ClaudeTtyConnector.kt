@@ -29,7 +29,7 @@ class ClaudeTtyConnector(
     @Volatile
     private var startupParsed = false
 
-    override fun getName(): String = "Claude Code"
+    override fun getName(): String = "Prism"
 
     override fun isConnected(): Boolean = process.isAlive
 

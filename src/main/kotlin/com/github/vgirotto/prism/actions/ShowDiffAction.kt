@@ -15,7 +15,7 @@ class ShowDiffAction : AnAction() {
 
         // Show and activate the Claude Code tool window (Changes panel is always visible)
         ToolWindowManager.getInstance(project)
-            .getToolWindow("Claude Code")
+            .getToolWindow("Prism")
             ?.activate(null)
     }
 

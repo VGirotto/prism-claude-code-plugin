@@ -22,7 +22,7 @@ class InsertFileReferenceAction : AnAction() {
         processManager.sendText(reference)
 
         ToolWindowManager.getInstance(project)
-            .getToolWindow("Claude Code")
+            .getToolWindow("Prism")
             ?.activate(null)
     }
 

@@ -12,7 +12,7 @@ class NewSessionAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Claude Code") ?: return
+        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Prism") ?: return
 
         toolWindow.show {
             val factory = ClaudeToolWindowFactory()

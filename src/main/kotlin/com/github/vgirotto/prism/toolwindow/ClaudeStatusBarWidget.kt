@@ -19,7 +19,7 @@ import javax.swing.JComponent
 
 class ClaudeStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun getId(): String = WIDGET_ID
-    override fun getDisplayName(): String = "Claude Code"
+    override fun getDisplayName(): String = "Prism"
 
     override fun createWidget(project: Project): StatusBarWidget =
         ClaudeStatusBarWidget(project)
@@ -47,7 +47,7 @@ class ClaudeStatusBarWidget(private val project: Project) : CustomStatusBarWidge
         object : ClickListener() {
             override fun onClick(event: MouseEvent, clickCount: Int): Boolean {
                 ToolWindowManager.getInstance(project)
-                    .getToolWindow("Claude Code")
+                    .getToolWindow("Prism")
                     ?.activate(null)
                 return true
             }

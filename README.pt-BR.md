@@ -1,6 +1,6 @@
 # Prism — IDE Companion for Claude Code
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/VGirotto/prism-claude-code-plugin/releases)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/VGirotto/prism-claude-code-plugin/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![JetBrains](https://img.shields.io/badge/JetBrains-2024.3+-orange.svg)](https://plugins.jetbrains.com/)
 

@@ -260,7 +260,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             }
 
             splitter.addHierarchyListener {
-                val tw = ToolWindowManager.getInstance(project).getToolWindow("Claude Code")
+                val tw = ToolWindowManager.getInstance(project).getToolWindow("Prism")
                 if (tw != null) {
                     val shouldBeVertical = tw.anchor == ToolWindowAnchor.LEFT ||
                         tw.anchor == ToolWindowAnchor.RIGHT

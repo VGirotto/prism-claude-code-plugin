@@ -28,12 +28,28 @@ class ConversationHistoryService(private val project: Project) {
     /**
      * Returns the Claude projects directory for the current project.
      * Claude Code stores sessions under ~/.claude/projects/{escaped-project-path}/
+     *
+     * Claude Code replaces both '/' and '_' with '-'. We try multiple escaping
+     * strategies with a fuzzy fallback to handle any unexpected variations.
      */
     fun getProjectHistoryDir(): File? {
         val basePath = project.basePath ?: return null
-        val escapedPath = basePath.replace("/", "-")
-        val dir = File(System.getProperty("user.home"), ".claude/projects/$escapedPath")
-        return if (dir.isDirectory) dir else null
+        val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
+        if (!claudeProjectsDir.isDirectory) return null
+
+        // Strategy 1: Claude Code escaping (replaces / and _ with -)
+        val primaryDir = File(claudeProjectsDir, basePath.replace("/", "-").replace("_", "-"))
+        if (primaryDir.isDirectory) return primaryDir
+
+        // Strategy 2: Simple slash-only replacement
+        val fallbackDir = File(claudeProjectsDir, basePath.replace("/", "-"))
+        if (fallbackDir.isDirectory) return fallbackDir
+
+        // Strategy 3: Fuzzy match — normalize both sides and compare
+        val normalize = { s: String -> s.replace(Regex("[^a-zA-Z0-9]"), "-").lowercase() }
+        val normalizedPath = normalize(basePath)
+        return claudeProjectsDir.listFiles { f -> f.isDirectory }
+            ?.firstOrNull { normalize(it.name) == normalizedPath }
     }
 
     /**
