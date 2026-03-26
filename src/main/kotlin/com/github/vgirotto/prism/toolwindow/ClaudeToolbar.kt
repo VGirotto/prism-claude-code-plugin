@@ -106,7 +106,7 @@ private class TemplatesAction(private val project: Project) : AnAction(
             template, selection = selection, filePath = filePath,
         )
         ClaudeProcessManager.getInstance(project).sendText("$resolved\n")
-        ToolWindowManager.getInstance(project).getToolWindow("Claude Code")?.activate(null)
+        ToolWindowManager.getInstance(project).getToolWindow("Prism")?.activate(null)
     }
 
     private fun showEditDialog(templateService: PromptTemplateService) {

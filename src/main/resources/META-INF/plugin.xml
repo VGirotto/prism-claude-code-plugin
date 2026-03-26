@@ -30,10 +30,18 @@
     <p><strong>No external calls.</strong> Prism is a local visual wrapper for the Claude Code CLI.
     All data stays on your machine.</p>
 
+    <p><em>Prism is an independent, community-built project.
+    Not affiliated with, endorsed by, or sponsored by Anthropic.</em></p>
+
     <p>See <a href="https://github.com/VGirotto/prism-claude-code-plugin">GitHub</a> for full documentation.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.0.1</h2>
+    <ul>
+        <li>Fix: project path escaping for directories with underscores in conversation history</li>
+        <li>Added multi-strategy path resolution with fuzzy fallback</li>
+    </ul>
     <h2>v1.0.0 — Initial Release</h2>
     <ul>
         <li>Interactive terminal with Claude Code CLI</li>
@@ -53,11 +61,11 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Tool Window -->
-        <toolWindow id="Claude Code"
+        <toolWindow id="Prism"
                     anchor="bottom"
                     canCloseContents="true"
                     factoryClass="com.github.vgirotto.prism.toolwindow.ClaudeToolWindowFactory"
-                    icon="/icons/claude.svg"/>
+                    icon="/icons/prism.svg"/>
 
         <!-- Settings -->
         <projectConfigurable
@@ -101,9 +109,9 @@
     <actions>
         <action id="Prism.Open"
                 class="com.github.vgirotto.prism.actions.OpenClaudeAction"
-                text="Toggle Claude Code"
-                description="Toggle Claude Code terminal panel"
-                icon="/icons/claude.svg">
+                text="Toggle Prism"
+                description="Toggle Prism terminal panel"
+                icon="/icons/prism.svg">
             <add-to-group group-id="ToolsMenu" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="alt shift C"/>
             <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta shift C"/>
@@ -123,7 +131,7 @@
                 class="com.github.vgirotto.prism.actions.SendSelectionAction"
                 text="Send Selection to Claude"
                 description="Send selected text to Claude Code"
-                icon="/icons/claude.svg">
+                icon="/icons/prism.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="Prism.AskClaudeGroup"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift ENTER"/>
             <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift ENTER"/>
@@ -133,7 +141,7 @@
                 class="com.github.vgirotto.prism.actions.InsertFileReferenceAction"
                 text="Insert File Reference in Claude"
                 description="Insert @file reference in Claude Code"
-                icon="/icons/claude.svg">
+                icon="/icons/prism.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="Prism.AskClaudeGroup"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
             <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift K"/>
@@ -143,7 +151,7 @@
         <group id="Prism.AskClaudeGroup"
                text="Ask Claude..."
                description="Send code to Claude with a prompt"
-               icon="/icons/claude.svg"
+               icon="/icons/prism.svg"
                popup="true">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
 

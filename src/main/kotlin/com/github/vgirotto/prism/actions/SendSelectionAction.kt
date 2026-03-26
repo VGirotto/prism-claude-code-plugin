@@ -30,7 +30,7 @@ class SendSelectionAction : AnAction() {
 
         // Activate the Claude tool window
         ToolWindowManager.getInstance(project)
-            .getToolWindow("Claude Code")
+            .getToolWindow("Prism")
             ?.activate(null)
     }
 

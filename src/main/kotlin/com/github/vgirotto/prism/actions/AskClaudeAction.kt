@@ -39,7 +39,7 @@ abstract class AskClaudeAction(private val prompt: String) : AnAction() {
         processManager.sendText(message + "\n")
 
         ToolWindowManager.getInstance(project)
-            .getToolWindow("Claude Code")
+            .getToolWindow("Prism")
             ?.activate(null)
     }
 
