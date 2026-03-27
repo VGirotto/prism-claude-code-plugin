@@ -2,6 +2,7 @@ package com.github.vgirotto.prism.actions
 
 import com.github.vgirotto.prism.services.ClaudeProcessManager
 import com.github.vgirotto.prism.services.ContextProvider
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -33,6 +34,8 @@ class SendSelectionAction : AnAction() {
             .getToolWindow("Prism")
             ?.activate(null)
     }
+
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         val editor = e.getData(CommonDataKeys.EDITOR)

@@ -44,7 +44,20 @@ src/main/kotlin/com/github/vgirotto/prism/
     └── ClaudeBundle.kt
 ```
 
-## 2. Diff View Architecture
+## 2. Compatibility
+
+| Property | Value |
+|----------|-------|
+| `sinceBuild` | `243` (IntelliJ 2024.3) |
+| `untilBuild` | _(none — no upper limit)_ |
+| Kotlin | 1.9.x (must match IDE's bundled stdlib) |
+| JVM | 21 |
+
+The plugin deliberately omits `untilBuild` to remain compatible with all future IDE versions. Before every release, run `./gradlew verifyPlugin` to check binary compatibility across the supported IDE range. The verifier automatically tests against the recommended set of builds (currently 2024.3 through 2026.1).
+
+All action classes must override `getActionUpdateThread()` — this is mandatory since IntelliJ Platform build 241.
+
+## 3. Diff View Architecture
 
 The diff system captures a snapshot of the project before each Claude interaction and computes the delta after Claude finishes writing to disk.
 
@@ -117,7 +130,7 @@ The snapshot mechanism is designed to minimize memory usage while keeping diff c
 
 Each interaction is also tagged as a Local History label, providing an independent recovery path outside of the plugin's own revert mechanism.
 
-## 3. Performance
+## 4. Performance
 
 The table below reflects typical measurements on macOS with an SSD. Incremental snapshot time refers to a scenario where fewer than 10% of files changed since the previous interaction.
 

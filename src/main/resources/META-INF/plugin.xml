@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.vgirotto.prism</id>
     <name>Prism - IDE Companion for Claude Code</name>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <vendor email="VGirotto@github.com" url="https://github.com/VGirotto/prism-claude-code-plugin">VGirotto</vendor>
 
     <description><![CDATA[
@@ -37,6 +37,12 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.1.0 — Compatibility Update</h2>
+    <ul>
+        <li>Compatibility: Removed upper IDE build limit — now works with IntelliJ 2024.3 and all future versions</li>
+        <li>Fix: Added explicit ActionUpdateThread declaration to all action classes</li>
+        <li>Dependencies: Updated Kotlin, JUnit, Gradle, and IntelliJ Platform Gradle Plugin to latest stable</li>
+    </ul>
     <h2>v1.0.1</h2>
     <ul>
         <li>Fix: project path escaping for directories with underscores in conversation history</li>

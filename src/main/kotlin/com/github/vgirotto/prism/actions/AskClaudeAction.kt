@@ -3,6 +3,7 @@ package com.github.vgirotto.prism.actions
 import com.github.vgirotto.prism.i18n.ClaudeBundle
 import com.github.vgirotto.prism.services.ClaudeProcessManager
 import com.github.vgirotto.prism.services.ContextProvider
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -42,6 +43,8 @@ abstract class AskClaudeAction(private val prompt: String) : AnAction() {
             .getToolWindow("Prism")
             ?.activate(null)
     }
+
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
