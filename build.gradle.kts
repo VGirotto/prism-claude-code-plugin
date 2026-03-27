@@ -31,8 +31,9 @@ dependencies {
         zipSigner()
     }
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly("junit:junit:4.13.2") // Required by IntelliJ test framework
 }
 
 intellijPlatform {
@@ -50,7 +51,7 @@ tasks.test {
 tasks {
     patchPluginXml {
         sinceBuild.set("243")
-        untilBuild.set("253.*")
+        untilBuild.set(provider { null })
     }
 
     buildSearchableOptions {

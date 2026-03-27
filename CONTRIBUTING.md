@@ -61,6 +61,24 @@ You can also install a built artifact manually:
 
 Always run `./gradlew test` and `./gradlew verifyPlugin` before submitting a PR.
 
+## IDE Compatibility
+
+The plugin supports **IntelliJ 2024.3 (build 243) and newer** with no upper version limit. To ensure your changes don't break compatibility:
+
+1. **Run the Plugin Verifier** — this downloads and tests against multiple IDE versions automatically:
+   ```bash
+   ./gradlew verifyPlugin
+   ```
+   This will verify against the recommended set of IDE builds (2024.3 through the latest). Fix any reported errors before submitting.
+
+2. **Check for deprecated APIs** — the verifier reports deprecated and internal API usages. Avoid introducing new ones.
+
+3. **Keep `sinceBuild` at 243** — do not raise the minimum unless absolutely necessary, to preserve backward compatibility.
+
+4. **Do not set `untilBuild`** — the project deliberately omits the upper bound. If you need to restrict compatibility for a specific reason, discuss it in an issue first.
+
+5. **Keep Kotlin at 1.9.x** — the plugin uses the IDE's bundled Kotlin stdlib (`kotlin.stdlib.default.dependency = false`). IntelliJ 2024.3 bundles Kotlin 1.9.x, so compiling with Kotlin 2.x could produce incompatible bytecode.
+
 ## Code Style
 
 - Follow the conventions already present in the codebase.

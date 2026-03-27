@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-03-27
+
+### Changed
+
+- **Compatibility**: removed upper IDE build limit (`untilBuild`) — plugin now works with IntelliJ 2024.3 and all future versions (fixes install error on 2026.1+)
+- **Dependencies**: updated IntelliJ Platform Gradle Plugin (2.2.1 → 2.11.0), JUnit Jupiter (5.10.2 → 5.11.4), Gradle wrapper (8.10.2 → 8.13)
+
+### Fixed
+
+- **Actions**: added explicit `ActionUpdateThread.BGT` override to `AskClaudeAction`, `SendSelectionAction`, `ShowDiffAction`, `InsertFileReferenceAction`, and `OpenClaudeAction` (best practice for IntelliJ 241+, eliminates deprecation warnings on newer builds)
+
 ## [1.0.1] — 2026-03-26
 
 ### Fixed
