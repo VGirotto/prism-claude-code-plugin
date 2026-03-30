@@ -1,42 +1,56 @@
 <idea-plugin>
     <id>com.github.vgirotto.prism</id>
     <name>Prism - IDE Companion for Claude Code</name>
-    <version>1.1.0</version>
-    <vendor email="VGirotto@github.com" url="https://github.com/VGirotto/prism-claude-code-plugin">VGirotto</vendor>
+    <vendor email="VGirotto@users.noreply.github.com" url="https://github.com/VGirotto/prism-claude-code-plugin">VGirotto</vendor>
 
     <description><![CDATA[
-    <p><strong>Prism</strong> — A full-featured IDE companion that integrates the Claude Code CLI directly into your JetBrains IDE.</p>
+    <p><strong>Prism</strong> is a local visual wrapper that integrates the
+    <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code CLI</a>
+    directly into your JetBrains IDE. It runs the CLI in a real embedded terminal and makes
+    <strong>no external API calls</strong> — all data stays on your machine.</p>
+
+    <p>Requires the Claude Code CLI installed and authenticated independently.</p>
 
     <h3>Features</h3>
     <ul>
-        <li><strong>Interactive Terminal</strong> — Claude Code running inside your IDE with full ANSI color support</li>
-        <li><strong>Claude Changes Panel</strong> — Automatic diff view of files modified per interaction</li>
-        <li><strong>Context Menu</strong> — Explain, Review, Fix, Generate Tests, Refactor</li>
+        <li><strong>Interactive Terminal</strong> — Full ANSI color support via PTY (pty4j + JediTerm)</li>
+        <li><strong>Claude Changes Panel</strong> — Per-interaction diff view with history navigation and one-click revert</li>
+        <li><strong>Context Menu</strong> — Explain, Review, Fix, Generate Tests, Refactor from the editor</li>
         <li><strong>Toolbar</strong> — Model (opus/sonnet/haiku), Effort, Cost, Resume, Compact</li>
         <li><strong>Prompt Templates</strong> — Reusable templates with {selection}, {file}, {language} variables</li>
-        <li><strong>Conversation History</strong> — Browse past conversations with full-text search</li>
+        <li><strong>Conversation History</strong> — Browse and resume past conversations with full-text search</li>
         <li><strong>Multi-Session</strong> — Multiple simultaneous sessions in independent tabs</li>
-        <li><strong>Status Bar Widget</strong> — Shows Claude state (working/idle/stopped)</li>
+        <li><strong>Status Bar Widget</strong> — Real-time session state (working/idle/stopped)</li>
         <li><strong>i18n</strong> — English, Portuguese, Spanish</li>
     </ul>
 
     <h3>Compatibility</h3>
     <ul>
         <li>IntelliJ IDEA (Community &amp; Ultimate)</li>
-        <li>GoLand, WebStorm, PyCharm, CLion, and other JetBrains IDEs</li>
+        <li>GoLand, WebStorm, PyCharm, CLion, Rider, RubyMine, and other JetBrains IDEs</li>
+        <li>Requires IDE version 2024.3 or later</li>
     </ul>
 
-    <h3>Privacy</h3>
-    <p><strong>No external calls.</strong> Prism is a local visual wrapper for the Claude Code CLI.
-    All data stays on your machine.</p>
+    <h3>Open Source &amp; Contributing</h3>
+    <p>Prism is open source under the <strong>Apache License 2.0</strong>.
+    Found a bug or have a suggestion? Open an
+    <a href="https://github.com/VGirotto/prism-claude-code-plugin/issues">issue</a> or submit a
+    <a href="https://github.com/VGirotto/prism-claude-code-plugin/pulls">pull request</a> on GitHub.</p>
 
-    <p><em>Prism is an independent, community-built project.
-    Not affiliated with, endorsed by, or sponsored by Anthropic.</em></p>
-
-    <p>See <a href="https://github.com/VGirotto/prism-claude-code-plugin">GitHub</a> for full documentation.</p>
+    <h3>Disclaimer</h3>
+    <p>Prism is an independent, community-built project — not affiliated with, endorsed by, or
+    sponsored by Anthropic, PBC. "Claude" and "Claude Code" are trademarks of Anthropic, PBC.</p>
+    <p>This software is provided <strong>as-is</strong>, without warranty of any kind.
+    See the <a href="https://github.com/VGirotto/prism-claude-code-plugin/blob/main/LICENSE">LICENSE</a>
+    for details.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.1.1 — Marketplace Prep</h2>
+    <ul>
+        <li>Fix: Resolved write-unsafe context error on DiffPanel refresh during tab selection</li>
+        <li>Added dark theme plugin icon (pluginIcon_dark.svg)</li>
+    </ul>
     <h2>v1.1.0 — Compatibility Update</h2>
     <ul>
         <li>Compatibility: Removed upper IDE build limit — now works with IntelliJ 2024.3 and all future versions</li>

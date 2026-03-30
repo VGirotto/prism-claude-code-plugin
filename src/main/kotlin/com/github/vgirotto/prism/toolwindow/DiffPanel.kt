@@ -166,9 +166,11 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
      * Only computes a new diff if there isn't one yet (first interaction).
      */
     fun refreshDiff() {
-        project.basePath?.let {
-            com.intellij.openapi.vfs.LocalFileSystem.getInstance()
-                .findFileByPath(it)?.refresh(false, true)
+        project.basePath?.let { base ->
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                    .findFileByPath(base)?.refresh(false, true)
+            }
         }
 
         // Try showing the latest existing diff first

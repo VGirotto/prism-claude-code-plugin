@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- Top facet -->
+  <polygon points="20,2 36,14 30,14 20,6 10,14 4,14" fill="none" stroke="#E8A87C" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Bottom body -->
+  <polygon points="4,14 36,14 20,38" fill="none" stroke="#E8A87C" stroke-width="1.8" stroke-linejoin="round"/>
+  <!-- Inner facet lines -->
+  <line x1="10" y1="14" x2="20" y2="38" stroke="#E8A87C" stroke-width="1.2"/>
+  <line x1="30" y1="14" x2="20" y2="38" stroke="#E8A87C" stroke-width="1.2"/>
+  <line x1="20" y1="6" x2="20" y2="14" stroke="#E8A87C" stroke-width="1.2"/>
+</svg>
