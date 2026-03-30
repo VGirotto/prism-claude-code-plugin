@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] — 2026-03-30
+
+### Fixed
+
+- **DiffPanel**: resolved `Write-unsafe context` error when refreshing VFS during tab selection — wrapped `VirtualFile.refresh()` in `invokeLater` for proper write-safe context
+
+### Changed
+
+- **Description**: rewritten plugin description for Marketplace with disclaimer, Apache 2.0 license notice, and contribution links
+- **Icon**: added `pluginIcon_dark.svg` for better visibility on dark themes
+- **Metadata**: removed hardcoded `<version>` from plugin.xml (now sourced solely from gradle.properties), updated vendor email
+
 ## [1.1.0] — 2026-03-27
 
 ### Changed
