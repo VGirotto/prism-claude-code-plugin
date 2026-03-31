@@ -16,7 +16,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.impl.ActionButton
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -87,7 +87,7 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
             })
         }
 
-        val actionsToolbar = ActionToolbarImpl("ClaudeChangesActions", actionsGroup, true).apply {
+        val actionsToolbar = ActionManager.getInstance().createActionToolbar("ClaudeChangesActions", actionsGroup, true).apply {
             targetComponent = this@DiffPanel
         }
 
