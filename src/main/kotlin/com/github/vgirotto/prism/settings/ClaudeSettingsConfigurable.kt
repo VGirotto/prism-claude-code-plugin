@@ -2,7 +2,7 @@ package com.github.vgirotto.prism.settings
 
 import com.github.vgirotto.prism.i18n.ClaudeBundle
 import com.github.vgirotto.prism.services.ClaudeSettingsState
-import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.ui.dsl.builder.COLUMNS_LARGE
 import com.intellij.ui.dsl.builder.bindIntValue
@@ -25,7 +25,7 @@ class ClaudeSettingsConfigurable : BoundConfigurable(ClaudeBundle.message("setti
             }
             row(ClaudeBundle.message("settings.shell")) {
                 textFieldWithBrowseButton(
-                    FileChooserDescriptorFactory.createSingleFileDescriptor()
+                    FileChooserDescriptor(true, false, false, false, false, false)
                         .withTitle(ClaudeBundle.message("settings.shell.browse"))
                 )
                     .bindText(settings::shellPath)

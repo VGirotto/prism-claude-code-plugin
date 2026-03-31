@@ -46,9 +46,16 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.1.2 — API Compliance</h2>
+    <ul>
+        <li>Fix: Replaced all internal API usages (ActionToolbarImpl) with public ActionManager API</li>
+        <li>Fix: Replaced deprecated FileChooserDescriptorFactory method</li>
+        <li>Plugin Verifier: 0 problems across IntelliJ 2024.3 — 2026.1</li>
+    </ul>
     <h2>v1.1.1 — Marketplace Prep</h2>
     <ul>
         <li>Fix: Resolved write-unsafe context error on DiffPanel refresh during tab selection</li>
+        <li>Improved plugin description with disclaimer, license info, and contribution links</li>
         <li>Added dark theme plugin icon (pluginIcon_dark.svg)</li>
     </ul>
     <h2>v1.1.0 — Compatibility Update</h2>

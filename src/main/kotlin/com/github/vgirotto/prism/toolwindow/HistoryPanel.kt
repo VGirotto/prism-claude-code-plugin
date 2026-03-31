@@ -9,7 +9,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -93,7 +93,7 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
             })
         }
-        val toolbar = ActionToolbarImpl("ClaudeHistory", toolbarGroup, true).apply {
+        val toolbar = ActionManager.getInstance().createActionToolbar("ClaudeHistory", toolbarGroup, true).apply {
             targetComponent = listPanel
         }
 
@@ -133,12 +133,12 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
             })
         }
 
-        val detailToolbarImpl = ActionToolbarImpl("ClaudeHistoryDetail", detailToolbar, true).apply {
+        val detailToolbar2 = ActionManager.getInstance().createActionToolbar("ClaudeHistoryDetail", detailToolbar, true).apply {
             targetComponent = detailPanel
         }
 
         val headerPanel = JPanel(BorderLayout()).apply {
-            add(detailToolbarImpl.component, BorderLayout.WEST)
+            add(detailToolbar2.component, BorderLayout.WEST)
             add(detailTitleLabel.apply {
                 border = JBUI.Borders.empty(0, 8)
             }, BorderLayout.CENTER)
