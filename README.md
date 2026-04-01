@@ -10,7 +10,7 @@ A full-featured JetBrains plugin that integrates the **Claude Code CLI** directl
 
 Prism is a **local visual wrapper** — it spawns the Claude Code CLI via a real PTY and makes **no external API calls**. You must have the CLI installed and authenticated independently.
 
-<img src="docs/images/ask-to-claude.gif" width="80%" />
+<img src="docs/images/prism.gif" width="80%" />
 
 > **Disclaimer:** This is an unofficial community plugin, not affiliated with or endorsed by Anthropic, PBC. "Claude" and "Claude Code" are trademarks of Anthropic, PBC.
 

@@ -10,7 +10,7 @@ Plugin completo para JetBrains que integra o **Claude Code CLI** diretamente na 
 
 Prism é um **wrapper visual local** — ele executa o Claude Code CLI via PTY real e **não faz chamadas externas**. Você precisa ter o CLI instalado e autenticado de forma independente.
 
-<img src="docs/images/ask-to-claude.gif" width="80%" />
+<img src="docs/images/prism.gif" width="80%" />
 
 > **Aviso:** Este é um plugin da comunidade, não afiliado ou endossado pela Anthropic, PBC. "Claude" e "Claude Code" são marcas da Anthropic, PBC.
 
