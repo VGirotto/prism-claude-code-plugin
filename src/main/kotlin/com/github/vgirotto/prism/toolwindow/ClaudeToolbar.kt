@@ -10,7 +10,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
@@ -39,7 +39,7 @@ class ClaudeToolbar(private val project: Project) : JPanel(BorderLayout()) {
             add(TemplatesAction(project))
         }
 
-        val mainToolbar = ActionToolbarImpl("ClaudeToolbar", mainGroup, true).apply {
+        val mainToolbar = ActionManager.getInstance().createActionToolbar("ClaudeToolbar", mainGroup, true).apply {
             targetComponent = this@ClaudeToolbar
         }
 
@@ -47,7 +47,7 @@ class ClaudeToolbar(private val project: Project) : JPanel(BorderLayout()) {
             add(SettingsAction(project))
         }
 
-        val rightToolbar = ActionToolbarImpl("ClaudeToolbarRight", rightGroup, true).apply {
+        val rightToolbar = ActionManager.getInstance().createActionToolbar("ClaudeToolbarRight", rightGroup, true).apply {
             targetComponent = this@ClaudeToolbar
         }
 
