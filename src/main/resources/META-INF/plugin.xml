@@ -46,6 +46,15 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.2.0 — Toolbar & Context Improvements</h2>
+    <ul>
+        <li>New: <strong>Clear</strong> button in toolbar — sends /clear with confirmation dialog</li>
+        <li>New: <strong>xhigh</strong> effort level added between high and max</li>
+        <li>New: <strong>Open effort picker</strong> option — opens Claude's native interactive slider via /effort</li>
+        <li>New: <strong>Open model picker</strong> option — opens Claude's native model selector via /model</li>
+        <li>New: <strong>Mention in Claude</strong> right-click action in Project Explorer — inserts @path for any file or folder</li>
+        <li>Fix: Send Selection shortcut now inserts @reference with trailing space instead of auto-submitting</li>
+    </ul>
     <h2>v1.1.2 — API Compliance</h2>
     <ul>
         <li>Fix: Replaced all internal API usages (ActionToolbarImpl) with public ActionManager API</li>
@@ -172,6 +181,14 @@
             <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="Prism.AskClaudeGroup"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
             <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift K"/>
+        </action>
+
+        <action id="Prism.MentionFolder"
+                class="com.github.vgirotto.prism.actions.MentionFolderAction"
+                text="Mention in Claude"
+                description="Insert @path reference in Claude Code"
+                icon="/icons/prism.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
 
         <!-- Ask Claude context menu group -->
