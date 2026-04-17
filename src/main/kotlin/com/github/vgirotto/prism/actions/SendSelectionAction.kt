@@ -22,9 +22,9 @@ class SendSelectionAction : AnAction() {
         // Send line reference when possible, fallback to full text
         val lineRef = contextProvider.formatSelectionReference(editor, file)
         val message = if (lineRef != null) {
-            lineRef + "\n"
+            lineRef + " "
         } else {
-            selectedText + "\n"
+            selectedText + " "
         }
         val processManager = ClaudeProcessManager.getInstance(project)
         processManager.sendText(message)

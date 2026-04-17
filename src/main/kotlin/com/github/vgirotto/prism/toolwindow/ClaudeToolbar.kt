@@ -31,6 +31,7 @@ class ClaudeToolbar(private val project: Project) : JPanel(BorderLayout()) {
         val mainGroup = DefaultActionGroup().apply {
             add(ResumeAction(project))
             add(CompactAction(project))
+            add(ClearAction(project))
             addSeparator()
             add(ModelAction(project))
             add(EffortAction(project))
@@ -158,6 +159,13 @@ private class ModelAction(private val project: Project) : AnAction(
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
             }
+            addSeparator()
+            add(object : AnAction(ClaudeBundle.message("toolbar.model.picker"), ClaudeBundle.message("toolbar.model.picker.desc"), null), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                    ClaudeProcessManager.getInstance(project).sendText("/model\r")
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            })
         }
         val popup = com.intellij.openapi.actionSystem.ActionManager.getInstance()
             .createActionPopupMenu("ClaudeModel", group)
@@ -177,6 +185,7 @@ private class EffortAction(private val project: Project) : AnAction(
                 "low" to ClaudeBundle.message("toolbar.effort.low"),
                 "medium" to ClaudeBundle.message("toolbar.effort.medium"),
                 "high" to ClaudeBundle.message("toolbar.effort.high"),
+                "xhigh" to ClaudeBundle.message("toolbar.effort.xhigh"),
                 "max" to ClaudeBundle.message("toolbar.effort.max"),
             )) {
                 add(object : AnAction(level.first, level.second, null), DumbAware {
@@ -186,6 +195,13 @@ private class EffortAction(private val project: Project) : AnAction(
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
             }
+            addSeparator()
+            add(object : AnAction(ClaudeBundle.message("toolbar.effort.picker"), ClaudeBundle.message("toolbar.effort.picker.desc"), null), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                    ClaudeProcessManager.getInstance(project).sendText("/effort\r")
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            })
         }
         val popup = com.intellij.openapi.actionSystem.ActionManager.getInstance()
             .createActionPopupMenu("ClaudeEffort", group)
@@ -226,6 +242,25 @@ private class CompactAction(private val project: Project) : AnAction(
         )
         if (result == Messages.OK) {
             ClaudeProcessManager.getInstance(project).sendText("/compact\r")
+        }
+    }
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+}
+
+private class ClearAction(private val project: Project) : AnAction(
+    ClaudeBundle.message("toolbar.clear"), ClaudeBundle.message("toolbar.clear.desc"), AllIcons.Actions.GC
+), DumbAware {
+    override fun actionPerformed(e: AnActionEvent) {
+        val result = Messages.showOkCancelDialog(
+            project,
+            ClaudeBundle.message("toolbar.clear.message"),
+            ClaudeBundle.message("toolbar.clear.title"),
+            ClaudeBundle.message("toolbar.clear.button"),
+            ClaudeBundle.message("toolbar.cancel"),
+            AllIcons.Actions.GC
+        )
+        if (result == Messages.OK) {
+            ClaudeProcessManager.getInstance(project).sendText("/clear\r")
         }
     }
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
