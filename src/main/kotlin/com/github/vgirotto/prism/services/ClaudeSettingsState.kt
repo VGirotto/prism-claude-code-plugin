@@ -67,9 +67,6 @@ class ClaudeSettingsState : PersistentStateComponent<ClaudeSettingsState.State> 
     fun getExcludedPatterns(): List<String> =
         excludedPatterns.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
-    fun getExcludedDirSet(): Set<String> =
-        getExcludedPatterns().toSet()
-
     companion object {
         fun getInstance(): ClaudeSettingsState =
             ApplicationManager.getApplication().getService(ClaudeSettingsState::class.java)
