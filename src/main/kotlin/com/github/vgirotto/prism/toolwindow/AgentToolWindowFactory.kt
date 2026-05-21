@@ -1,7 +1,7 @@
 package com.github.vgirotto.prism.toolwindow
 
 import com.github.vgirotto.prism.i18n.ClaudeBundle
-import com.github.vgirotto.prism.services.ClaudeProcessManager
+import com.github.vgirotto.prism.services.AgentProcessManager
 import com.github.vgirotto.prism.services.ClaudeSettingsState
 import com.github.vgirotto.prism.services.FileSnapshotService
 import com.intellij.icons.AllIcons
@@ -45,13 +45,13 @@ import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.SwingConstants
 
-class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
+class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
 
-    private val log = Logger.getInstance(ClaudeToolWindowFactory::class.java)
+    private val log = Logger.getInstance(AgentToolWindowFactory::class.java)
 
     companion object {
-        val SESSION_ID_KEY = Key.create<String>("ClaudeSessionId")
-        val DIFF_PANEL_KEY = Key.create<DiffPanel>("ClaudeDiffPanel")
+        val SESSION_ID_KEY = Key.create<String>("AgentSessionId")
+        val DIFF_PANEL_KEY = Key.create<DiffPanel>("AgentDiffPanel")
 
         private var sessionCounter = 0
 
@@ -122,19 +122,19 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             override fun selectionChanged(event: ContentManagerEvent) {
                 val sessionId = event.content.getUserData(SESSION_ID_KEY)
                 if (sessionId != null) {
-                    ClaudeProcessManager.getInstance(project).setActiveSession(sessionId)
+                    AgentProcessManager.getInstance(project).setActiveSession(sessionId)
                 }
                 event.content.getUserData(DIFF_PANEL_KEY)?.refreshDiff()
             }
 
             override fun contentRemoved(event: ContentManagerEvent) {
                 val sessionId = event.content.getUserData(SESSION_ID_KEY) ?: return
-                ClaudeProcessManager.getInstance(project).destroySession(sessionId)
+                AgentProcessManager.getInstance(project).destroySession(sessionId)
             }
         })
 
         // Idle listener: compute one new diff off the UI thread, then show it on all DiffPanels.
-        ClaudeProcessManager.getInstance(project).addIdleListener {
+        AgentProcessManager.getInstance(project).addIdleListener {
             val panels = (0 until toolWindow.contentManager.contentCount).mapNotNull { i ->
                 toolWindow.contentManager.getContent(i)?.getUserData(DIFF_PANEL_KEY)
             }
@@ -152,7 +152,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
         }
 
         // Process death listener: notify when session dies unexpectedly
-        ClaudeProcessManager.getInstance(project).addProcessDeathListener { sessionId, sessionName ->
+        AgentProcessManager.getInstance(project).addProcessDeathListener { sessionId, sessionName ->
             log.warn("Session process died: $sessionName [$sessionId]")
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Prism")
@@ -187,7 +187,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             return
         }
 
-        val disposable = Disposer.newDisposable("ClaudeSession")
+        val disposable = Disposer.newDisposable("AgentSession")
         Disposer.register(toolWindow.disposable, disposable)
 
         try {
@@ -196,7 +196,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
 
             val escapeAction = object : DumbAwareAction() {
                 override fun actionPerformed(e: AnActionEvent) {
-                    ClaudeProcessManager.getInstance(project).sendText("\u001B")
+                    AgentProcessManager.getInstance(project).sendText("\u001B")
                 }
             }
             escapeAction.registerCustomShortcutSet(
@@ -208,7 +208,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             // Shift+Enter sends CSI u escape sequence for newline without submitting
             val shiftEnterAction = object : DumbAwareAction() {
                 override fun actionPerformed(e: AnActionEvent) {
-                    ClaudeProcessManager.getInstance(project).sendText("\u001b[13;2u")
+                    AgentProcessManager.getInstance(project).sendText("\u001b[13;2u")
                 }
             }
             shiftEnterAction.registerCustomShortcutSet(
@@ -234,7 +234,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             for ((keyStroke, sequence) in cliShortcuts) {
                 val action = object : DumbAwareAction() {
                     override fun actionPerformed(e: AnActionEvent) {
-                        ClaudeProcessManager.getInstance(project).sendText(sequence)
+                        AgentProcessManager.getInstance(project).sendText(sequence)
                     }
                 }
                 action.registerCustomShortcutSet(
@@ -258,7 +258,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             } else {
                 object : DumbAwareAction() {
                     override fun actionPerformed(e: AnActionEvent) {
-                        ClaudeProcessManager.getInstance(project).sendText("\u0016")
+                        AgentProcessManager.getInstance(project).sendText("\u0016")
                     }
                 }
             }
@@ -268,7 +268,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
                 disposable
             )
 
-            val toolbar = ClaudeToolbar(project)
+            val toolbar = AgentToolbar(project)
             val terminalWithToolbar = JPanel(BorderLayout()).apply {
                 add(toolbar, BorderLayout.NORTH)
                 add(terminalWidget.component, BorderLayout.CENTER)
@@ -321,7 +321,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
             // Start Claude session
             ApplicationManager.getApplication().executeOnPooledThread {
                 try {
-                    val pm = ClaudeProcessManager.getInstance(project)
+                    val pm = AgentProcessManager.getInstance(project)
                     val result = pm.createSession(sessionName)
 
                     content.putUserData(SESSION_ID_KEY, result.sessionId)
@@ -438,7 +438,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
                 return
             }
             log.warn("SmartPaste: image flavor advertised but bytes could not be read; falling back to ^V")
-            ClaudeProcessManager.getInstance(project).sendText("\u0016")
+            AgentProcessManager.getInstance(project).sendText("\u0016")
             return
         }
 
@@ -458,7 +458,7 @@ class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
         // Bracketed paste mode: tells the CLI this is pasted content so newlines
         // are treated as input rather than submit, and key sequences inside the
         // text aren't interpreted as shortcuts.
-        ClaudeProcessManager.getInstance(project).sendText("\u001b[200~$payload\u001b[201~")
+        AgentProcessManager.getInstance(project).sendText("\u001b[200~$payload\u001b[201~")
     }
 
     private fun saveClipboardImageToTempFile(clipboard: java.awt.datatransfer.Clipboard): String? {
