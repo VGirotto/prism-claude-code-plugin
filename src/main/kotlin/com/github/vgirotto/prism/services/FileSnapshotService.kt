@@ -82,7 +82,7 @@ class FileSnapshotService(private val project: Project) : Disposable {
         ExclusionPatternMatcher.compile(emptyList())
 
     private fun getExcludePatterns(): List<String> =
-        ClaudeSettingsState.getInstance().getExcludedPatterns()
+        AgentSettingsState.getInstance().getExcludedPatterns()
 
     private fun userMatcher(): ExclusionPatternMatcher.Compiled = synchronized(patternCacheLock) {
         val patterns = getExcludePatterns()
@@ -94,7 +94,7 @@ class FileSnapshotService(private val project: Project) : Disposable {
     }
 
     private fun getMaxFileSize(): Long =
-        ClaudeSettingsState.getInstance().maxFileSizeKb.toLong() * 1024
+        AgentSettingsState.getInstance().maxFileSizeKb.toLong() * 1024
 
     /**
      * Takes a snapshot, serialized through the executor.
