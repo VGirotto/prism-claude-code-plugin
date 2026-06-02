@@ -103,7 +103,6 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         }
 
         val newSessionAction = NewSessionPopupAction(
-            project = project,
             createSessionTab = { cli -> createSessionTab(project, toolWindow, changesVisible, cli) },
         )
 
