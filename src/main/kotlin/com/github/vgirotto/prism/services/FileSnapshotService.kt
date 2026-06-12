@@ -67,8 +67,31 @@ class FileSnapshotService(private val project: Project) : Disposable {
         ".git",
     )
 
+    /** Compiled once — the mandatory patterns never change. */
+    private val mandatoryMatcher = ExclusionPatternMatcher.compile(mandatoryExcludePatterns)
+
+    /**
+     * Cached matcher for the user-configured exclusion patterns. Recompiled only when the pattern
+     * list changes, so a full snapshot scan reuses one set of regexes instead of recompiling per
+     * file. Guarded by [patternCacheLock] because isExcluded() runs both on the snapshot executor
+     * and on the VFS listener thread (via recordChange()).
+     */
+    private val patternCacheLock = Any()
+    private var cachedRawPatterns: List<String>? = null
+    private var cachedUserMatcher: ExclusionPatternMatcher.Compiled =
+        ExclusionPatternMatcher.compile(emptyList())
+
     private fun getExcludePatterns(): List<String> =
         ClaudeSettingsState.getInstance().getExcludedPatterns()
+
+    private fun userMatcher(): ExclusionPatternMatcher.Compiled = synchronized(patternCacheLock) {
+        val patterns = getExcludePatterns()
+        if (patterns != cachedRawPatterns) {
+            cachedUserMatcher = ExclusionPatternMatcher.compile(patterns)
+            cachedRawPatterns = patterns
+        }
+        cachedUserMatcher
+    }
 
     private fun getMaxFileSize(): Long =
         ClaudeSettingsState.getInstance().maxFileSizeKb.toLong() * 1024
@@ -463,9 +486,8 @@ class FileSnapshotService(private val project: Project) : Disposable {
     }
 
     private fun isExcluded(path: String): Boolean {
-        val patterns = getExcludePatterns()
-        return ExclusionPatternMatcher.matches(path, mandatoryExcludePatterns) ||
-            ExclusionPatternMatcher.matches(path, patterns) ||
+        return mandatoryMatcher.matches(path) ||
+            userMatcher().matches(path) ||
             excludeFilePatterns.any { it.matches(path) }
     }
 

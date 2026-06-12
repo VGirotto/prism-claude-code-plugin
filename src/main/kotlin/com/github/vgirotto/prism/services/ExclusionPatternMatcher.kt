@@ -7,38 +7,70 @@ package com.github.vgirotto.prism.services
  * behavior for values like "build" and "node_modules". Entries containing
  * wildcards use glob-like matching: "*" and "?" stay within one path segment,
  * while "**" can cross path separators.
+ *
+ * Wildcard patterns are translated to regexes once via [compile]; the resulting
+ * [Compiled] matcher is reused across every path. Callers that check many paths
+ * against the same pattern list (e.g. a full snapshot scan) should [compile]
+ * once and reuse the result instead of repeatedly calling [matches], which
+ * recompiles on every invocation.
  */
 internal object ExclusionPatternMatcher {
 
-    fun matches(path: String, patterns: Iterable<String>): Boolean {
-        val normalizedPath = normalize(path).trim('/')
-        if (normalizedPath.isEmpty()) return false
+    /** Convenience entry point. Compiles [patterns] on every call — prefer [compile] for hot paths. */
+    fun matches(path: String, patterns: Iterable<String>): Boolean =
+        compile(patterns).matches(path)
 
-        val segments = normalizedPath.split('/').filter { it.isNotEmpty() }
-        val pathCandidates = pathCandidates(normalizedPath)
+    /** Pre-compiles [patterns] into a reusable matcher. */
+    fun compile(patterns: Iterable<String>): Compiled {
+        val exactNames = mutableSetOf<String>()
+        val segmentRegexes = mutableListOf<Regex>()
+        val pathRegexes = mutableListOf<Regex>()
 
-        return patterns.any { rawPattern ->
+        for (rawPattern in patterns) {
             val pattern = normalize(rawPattern).trim('/')
-            if (pattern.isEmpty()) {
-                false
-            } else if (hasWildcard(pattern)) {
-                wildcardMatches(pattern, segments, pathCandidates)
+            if (pattern.isEmpty()) continue
+
+            if (!hasWildcard(pattern)) {
+                exactNames.add(pattern)
+            } else if ('/' in pattern) {
+                pathRegexes.addAll(wildcardRegexes(pattern))
             } else {
-                segments.any { it == pattern }
+                segmentRegexes.addAll(wildcardRegexes(pattern))
             }
         }
+
+        return Compiled(exactNames, segmentRegexes, pathRegexes)
     }
 
-    private fun wildcardMatches(
-        pattern: String,
-        segments: List<String>,
-        pathCandidates: List<String>,
-    ): Boolean {
-        val regexes = wildcardRegexes(pattern)
-        return if ('/' in pattern) {
-            pathCandidates.any { candidate -> regexes.any { it.matches(candidate) } }
-        } else {
-            segments.any { segment -> regexes.any { it.matches(segment) } }
+    /**
+     * A matcher built from a fixed set of exclusion patterns. Holds the compiled
+     * wildcard regexes so each [matches] call only re-tokenizes the path, not the
+     * patterns.
+     */
+    internal class Compiled(
+        private val exactNames: Set<String>,
+        private val segmentRegexes: List<Regex>,
+        private val pathRegexes: List<Regex>,
+    ) {
+        fun matches(path: String): Boolean {
+            val normalizedPath = normalize(path).trim('/')
+            if (normalizedPath.isEmpty()) return false
+
+            val segments = normalizedPath.split('/').filter { it.isNotEmpty() }
+
+            if (exactNames.isNotEmpty() && segments.any { it in exactNames }) return true
+            if (segmentRegexes.isNotEmpty() &&
+                segments.any { segment -> segmentRegexes.any { it.matches(segment) } }
+            ) {
+                return true
+            }
+            if (pathRegexes.isNotEmpty()) {
+                val pathCandidates = pathCandidates(normalizedPath)
+                if (pathCandidates.any { candidate -> pathRegexes.any { it.matches(candidate) } }) {
+                    return true
+                }
+            }
+            return false
         }
     }
 
