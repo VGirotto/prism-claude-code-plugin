@@ -1,0 +1,25 @@
+README.pt-BR.md
+  s_4c2592fbb839a4::t_6cc07075611d0b 3
+CHANGELOG.md
+  s_4c2592fbb839a4::t_60c7a6d6907398 18-21
+src/main/resources/META-INF/plugin.xml
+  s_4c2592fbb839a4::t_0068d9c62d362b 49-53
+README.md
+  s_4c2592fbb839a4::t_9421d0ddb6c0a7 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "ba2ec1c2018ee99d7096912f814d2315b967b971",
+  "prompts": {},
+  "sessions": {
+    "s_4c2592fbb839a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e467871-0da5-4ad5-8957-2a80b901c2e7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "VGirotto <vinicius.victor.girotto@gmail.com>"
+    }
+  }
+}
