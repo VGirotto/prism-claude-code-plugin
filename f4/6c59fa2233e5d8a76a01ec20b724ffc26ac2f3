@@ -1,0 +1,19 @@
+CONTRIBUTING.md
+  s_4c2592fbb839a4::t_a98378c8fe1afc 82-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f46c59fa2233e5d8a76a01ec20b724ffc26ac2f3",
+  "prompts": {},
+  "sessions": {
+    "s_4c2592fbb839a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e467871-0da5-4ad5-8957-2a80b901c2e7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "VGirotto <vinicius.victor.girotto@gmail.com>"
+    }
+  }
+}
