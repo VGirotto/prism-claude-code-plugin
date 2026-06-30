@@ -1,0 +1,27 @@
+CHANGELOG.md
+  s_1fe1e636b5667b::t_3ba7faff98c95c 8
+README.pt-BR.md
+  s_1fe1e636b5667b::t_dd0fb27221a981 3
+gradle.properties
+  s_1fe1e636b5667b::t_aa81773ce1af07 3
+README.md
+  s_1fe1e636b5667b::t_491043dcf59f24 3
+src/main/resources/META-INF/plugin.xml
+  s_1fe1e636b5667b::t_b607c1f72dd8ca 49-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "32a97d86a518b4f0c287330cd8d60a6b5d9d57f3",
+  "prompts": {},
+  "sessions": {
+    "s_1fe1e636b5667b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ddabdc34-cc25-4127-91ca-feb98d8cff75",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "VGirotto <vinicius.victor.girotto@gmail.com>"
+    }
+  }
+}
