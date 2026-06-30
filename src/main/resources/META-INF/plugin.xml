@@ -46,6 +46,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h2>v1.2.2 — Smart Paste on Linux</h2>
+    <ul>
+        <li>New: smart <code>Ctrl+V</code> on Linux — pastes clipboard images (written to a temp PNG, path attached) or text (via bracketed paste, so multi-line content doesn't auto-submit). Use <code>Ctrl+Shift+V</code> to force plain-text paste. macOS and Windows keep native paste.</li>
+    </ul>
     <h2>v1.2.1 — Snapshot Reliability</h2>
     <ul>
         <li>New: wildcard snapshot exclusions — patterns like <code>cmake-build-*</code> and <code>**/generated</code></li>
