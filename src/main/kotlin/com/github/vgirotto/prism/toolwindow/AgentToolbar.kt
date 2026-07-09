@@ -203,6 +203,24 @@ internal object CodexModelPicker {
     val OPEN_EFFORT: List<String> = listOf("/model", "\r", "\r")
 }
 
+/**
+ * Codex has no `/cost`. Its `/usage` command accepts an optional view argument
+ * — `daily`, `weekly`, or `cumulative` — each jumping straight to that
+ * token-activity view; bare `/usage` opens a menu instead. Verified against
+ * Codex 0.143.0.
+ */
+internal object CodexUsage {
+    /** View argument -> bundle key for its menu-item description. */
+    val VIEWS: List<Pair<String, String>> = listOf(
+        "daily" to "toolbar.cost.codex.daily",
+        "weekly" to "toolbar.cost.codex.weekly",
+        "cumulative" to "toolbar.cost.codex.cumulative",
+    )
+
+    /** The submitting `/usage <view>` command for the given view. */
+    fun command(view: String): String = "/usage $view\r"
+}
+
 private class ModelAction(private val project: Project) : AnAction(
     PrismBundle.message("toolbar.model"), PrismBundle.message("toolbar.model.desc"), AllIcons.Nodes.Models
 ), DumbAware {
@@ -344,16 +362,34 @@ private class CostAction(private val project: Project) : AnAction(
     PrismBundle.message("toolbar.cost"), PrismBundle.message("toolbar.cost.desc"), AllIcons.Actions.Profile
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        val mgr = AgentProcessManager.getInstance(project)
         if (activeAgentCli(project) == AgentCli.CODEX) {
-            // Codex has no /cost. /usage opens a small menu whose first row,
-            // "Show usage", displays recent account token usage — the closest
-            // equivalent. Drive it: type /usage, submit, then select row 1.
-            mgr.sendSequence(listOf("/usage", "\r", "1"))
+            val component = e.inputEvent?.component as? JComponent ?: return
+            showCodexUsageMenu(component)
         } else {
-            mgr.sendText("/cost\r")
+            AgentProcessManager.getInstance(project).sendText("/cost\r")
         }
     }
+
+    // Codex has no /cost. Its /usage command accepts a view argument
+    // (daily/weekly/cumulative), so the button becomes a dropdown that opens the
+    // chosen token-activity view directly instead of the default daily view.
+    private fun showCodexUsageMenu(component: JComponent) {
+        val mgr = AgentProcessManager.getInstance(project)
+        val group = DefaultActionGroup().apply {
+            for ((view, labelKey) in CodexUsage.VIEWS) {
+                add(object : AnAction(view, PrismBundle.message(labelKey), null), DumbAware {
+                    override fun actionPerformed(e: AnActionEvent) {
+                        mgr.sendText(CodexUsage.command(view))
+                    }
+                    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+                })
+            }
+        }
+        val popup = com.intellij.openapi.actionSystem.ActionManager.getInstance()
+            .createActionPopupMenu("CodexUsage", group)
+        popup.component.show(component, 0, component.height)
+    }
+
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.COST)
     }
