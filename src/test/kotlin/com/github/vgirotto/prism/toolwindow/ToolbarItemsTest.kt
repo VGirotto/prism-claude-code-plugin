@@ -16,7 +16,6 @@ class ToolbarItemsTest {
     fun `Codex omits Claude-specific items`() {
         val items = toolbarItemsFor(AgentCli.CODEX)
         for (claudeOnly in listOf(
-            ToolbarItem.CLEAR,
             ToolbarItem.MODEL,
             ToolbarItem.EFFORT,
             // /cost is a Claude-only slash command; Codex sessions shouldn't see it
@@ -35,6 +34,11 @@ class ToolbarItemsTest {
     @Test
     fun `Codex exposes Compact with identical command`() {
         assertTrue(ToolbarItem.COMPACT in toolbarItemsFor(AgentCli.CODEX))
+    }
+
+    @Test
+    fun `Codex exposes Clear with identical command`() {
+        assertTrue(ToolbarItem.CLEAR in toolbarItemsFor(AgentCli.CODEX))
     }
 
     @Test

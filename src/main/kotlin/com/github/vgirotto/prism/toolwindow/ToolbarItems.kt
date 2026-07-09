@@ -31,6 +31,9 @@ private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
     // /compact ("Summarize the visible conversation to free tokens") behaves the
     // same on Codex, so the shared CompactAction command works unchanged.
     ToolbarItem.COMPACT,
+    // /clear ("clear the terminal and start a new chat") is the Codex equivalent
+    // of Claude's /clear, so the shared ClearAction command works unchanged.
+    ToolbarItem.CLEAR,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )
