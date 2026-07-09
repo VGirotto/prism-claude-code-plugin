@@ -332,6 +332,22 @@ class AgentProcessManager(private val project: Project) : Disposable {
             }
         }
 
+        // Codex treats a "type text then newline" burst arriving in one write as a
+        // paste: it drops the text into the composer but never submits, so the user
+        // would have to press Enter themselves. For any submitting input (content
+        // followed by a line terminator — a slash command or a prompt) stage the
+        // body and the Enter key (CR) as separate keystrokes so Codex registers the
+        // submit. Claude submits the single burst fine and is left untouched. The
+        // model/effort/snapshot bookkeeping above has already run; sendSequence just
+        // performs the actual staged write.
+        if (session.cli == AgentCli.CODEX) {
+            val chunks = codexSubmitChunks(text)
+            if (chunks != null) {
+                sendSequence(chunks, sessionId)
+                return
+            }
+        }
+
         try {
             process.outputStream.write(text.toByteArray(StandardCharsets.UTF_8))
             process.outputStream.flush()
@@ -435,4 +451,26 @@ class AgentProcessManager(private val project: Project) : Disposable {
         fun getInstance(project: Project): AgentProcessManager =
             project.getService(AgentProcessManager::class.java)
     }
+}
+
+/**
+ * Classifies a [sendText] payload for Codex delivery.
+ *
+ * Returns the keystroke chunks (`[body, "\r"]`) needed to *submit* [text] when
+ * it is a submitting input — real content followed by a trailing line
+ * terminator (`\n` or `\r`), such as a slash command (`"/resume\r"`) or a
+ * prompt (`"ask something\n"`). Returns `null` when [text] should be written
+ * verbatim instead: insert-only text with no trailing terminator (e.g. a
+ * "@folder" mention), bare control keys (ESC, Ctrl-V), and bracketed-paste
+ * sequences all fall through untouched.
+ *
+ * Codex needs the Enter keystroke delivered separately from the typed text —
+ * a text+newline burst in a single write is interpreted as a paste and never
+ * submitted. See [AgentProcessManager.sendText].
+ */
+internal fun codexSubmitChunks(text: String): List<String>? {
+    val trimmed = text.trim().removeSuffix("\r").removeSuffix("\n").trim()
+    if (trimmed.isEmpty()) return null
+    if (!text.endsWith("\n") && !text.endsWith("\r")) return null
+    return listOf(text.trimEnd('\r', '\n'), "\r")
 }
