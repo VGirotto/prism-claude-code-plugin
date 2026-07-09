@@ -275,6 +275,11 @@ private class EffortAction(private val project: Project) : AnAction(
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         val component = e.inputEvent?.component as? JComponent ?: return
+        if (activeAgentCli(project) == AgentCli.CODEX) showCodexEffortMenu(component)
+        else showClaudeEffortMenu(component)
+    }
+
+    private fun showClaudeEffortMenu(component: JComponent) {
         val group = DefaultActionGroup().apply {
             for (level in listOf(
                 "auto" to PrismBundle.message("toolbar.effort.auto"),
@@ -303,6 +308,32 @@ private class EffortAction(private val project: Project) : AnAction(
             .createActionPopupMenu("ClaudeEffort", group)
         popup.component.show(component, 0, component.height)
     }
+
+    private fun showCodexEffortMenu(component: JComponent) {
+        val mgr = AgentProcessManager.getInstance(project)
+        val group = DefaultActionGroup().apply {
+            for ((key, digit, labelKey) in CodexModelPicker.EFFORTS) {
+                add(object : AnAction(key, PrismBundle.message(labelKey), null), DumbAware {
+                    override fun actionPerformed(e: AnActionEvent) {
+                        mgr.sendSequence(CodexModelPicker.selectEffort(digit))
+                        mgr.setSessionEffort(key)
+                    }
+                    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+                })
+            }
+            addSeparator()
+            add(object : AnAction(PrismBundle.message("toolbar.effort.picker"), PrismBundle.message("toolbar.effort.picker.desc"), null), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                    mgr.sendSequence(CodexModelPicker.OPEN_EFFORT)
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            })
+        }
+        val popup = com.intellij.openapi.actionSystem.ActionManager.getInstance()
+            .createActionPopupMenu("CodexEffort", group)
+        popup.component.show(component, 0, component.height)
+    }
+
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.EFFORT)
     }

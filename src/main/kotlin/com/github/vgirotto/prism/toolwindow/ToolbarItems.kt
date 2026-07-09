@@ -39,6 +39,9 @@ private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
     // Codex changes model via its interactive /model picker (see CodexModelPicker);
     // the Model button drives that picker rather than sending "/model <name>".
     ToolbarItem.MODEL,
+    // Codex has no /effort command — reasoning level is chosen on the second step
+    // of the /model picker, so the Effort button drives that same picker.
+    ToolbarItem.EFFORT,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )
