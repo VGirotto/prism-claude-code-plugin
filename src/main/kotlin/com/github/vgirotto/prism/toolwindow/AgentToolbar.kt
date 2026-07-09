@@ -344,7 +344,15 @@ private class CostAction(private val project: Project) : AnAction(
     PrismBundle.message("toolbar.cost"), PrismBundle.message("toolbar.cost.desc"), AllIcons.Actions.Profile
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        AgentProcessManager.getInstance(project).sendText("/cost\r")
+        val mgr = AgentProcessManager.getInstance(project)
+        if (activeAgentCli(project) == AgentCli.CODEX) {
+            // Codex has no /cost. /usage opens a small menu whose first row,
+            // "Show usage", displays recent account token usage — the closest
+            // equivalent. Drive it: type /usage, submit, then select row 1.
+            mgr.sendSequence(listOf("/usage", "\r", "1"))
+        } else {
+            mgr.sendText("/cost\r")
+        }
     }
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.COST)

@@ -42,6 +42,9 @@ private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
     // Codex has no /effort command — reasoning level is chosen on the second step
     // of the /model picker, so the Effort button drives that same picker.
     ToolbarItem.EFFORT,
+    // Codex has no /cost; the Cost button opens /usage and selects "Show usage",
+    // which reports recent account token usage.
+    ToolbarItem.COST,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )

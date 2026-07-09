@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New Session picker**: when both supported CLIs are installed, the New Session action lets you choose whether to start a Claude Code or Codex session.
 - **Default agent setting**: settings now include a default CLI plus separate executable paths for Claude Code and Codex.
 - **Codex conversation history**: the History panel can browse Codex sessions from `~/.codex/sessions`, filtered to the current IDE project by `cwd`.
+- **Full toolbar for Codex**: the Resume, Compact, Clear, Model, Effort, and Cost buttons now work in Codex sessions, mapped to their Codex equivalents. Resume/Compact/Clear send the identical slash command; Model and Effort drive Codex's interactive `/model` picker (model list and reasoning level) via keystrokes; Cost opens `/usage` and shows recent account token usage.
 
 ### Changed
 
 - **Agent Changes panel**: the changes window is now agent-agnostic, so Codex sessions use the same per-interaction snapshots, diff navigation, and revert workflow as Claude sessions.
 - **Agent terminology**: user-facing actions, settings, status, and documentation now refer to Prism or the active agent where behavior applies to both Claude Code and Codex.
-- **Toolbar behavior**: Claude-only slash-command actions such as Model, Effort, Resume, Compact, Clear, and Cost are hidden for Codex sessions; shared Templates and Settings remain available.
+- **Toolbar behavior**: toolbar actions are gated per CLI so each button maps to the active agent's equivalent command; shared Templates and Settings remain available for both.
 - **Plugin metadata**: plugin name, Marketplace description, README, and localized messages now describe support for Claude Code and Codex.
 
 ### Technical
