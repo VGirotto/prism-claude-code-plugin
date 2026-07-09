@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Agent Changes panel**: the changes window is now agent-agnostic, so Codex sessions use the same per-interaction snapshots, diff navigation, and revert workflow as Claude sessions.
 - **Agent terminology**: user-facing actions, settings, status, and documentation now refer to Prism or the active agent where behavior applies to both Claude Code and Codex.
-- **Toolbar behavior**: toolbar actions are gated per CLI so each button maps to the active agent's equivalent command; shared Templates and Settings remain available for both.
 - **Plugin metadata**: plugin name, Marketplace description, README, and localized messages now describe support for Claude Code and Codex.
 
 ### Technical
