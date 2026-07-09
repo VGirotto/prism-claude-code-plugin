@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — Not yet published
+
+### Added
+
+- **Codex integration**: Prism now supports both Claude Code and OpenAI Codex CLI sessions from the same tool window.
+- **New Session picker**: when both supported CLIs are installed, the New Session action lets you choose whether to start a Claude Code or Codex session.
+- **Default agent setting**: settings now include a default CLI plus separate executable paths for Claude Code and Codex.
+- **Codex conversation history**: the History panel can browse Codex sessions from `~/.codex/sessions`, filtered to the current IDE project by `cwd`.
+
+### Changed
+
+- **Agent Changes panel**: the changes window is now agent-agnostic, so Codex sessions use the same per-interaction snapshots, diff navigation, and revert workflow as Claude sessions.
+- **Agent terminology**: user-facing actions, settings, status, and documentation now refer to Prism or the active agent where behavior applies to both Claude Code and Codex.
+- **Toolbar behavior**: Claude-only slash-command actions such as Model, Effort, Resume, Compact, Clear, and Cost are hidden for Codex sessions; shared Templates and Settings remain available.
+- **Plugin metadata**: plugin name, Marketplace description, README, and localized messages now describe support for Claude Code and Codex.
+
+### Technical
+
+- Replaced Claude-specific session, process, terminal, settings, toolbar, and tool-window classes with agent-aware equivalents.
+- Split conversation history parsing behind a `HistoryReader` interface with dedicated Claude and Codex readers.
+- Added shared CLI binary lookup and Codex validation services, plus tests for agent settings, Codex history parsing, toolbar availability, banner parsing, and CLI path resolution.
+
 ## [1.2.2] — 2026-06-30
 
 ### Changed
