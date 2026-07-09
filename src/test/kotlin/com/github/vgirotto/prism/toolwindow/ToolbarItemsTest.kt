@@ -16,7 +16,6 @@ class ToolbarItemsTest {
     fun `Codex omits Claude-specific items`() {
         val items = toolbarItemsFor(AgentCli.CODEX)
         for (claudeOnly in listOf(
-            ToolbarItem.MODEL,
             ToolbarItem.EFFORT,
             // /cost is a Claude-only slash command; Codex sessions shouldn't see it
             // since clicking it would send /cost into the Codex PTY.
@@ -39,6 +38,11 @@ class ToolbarItemsTest {
     @Test
     fun `Codex exposes Clear with identical command`() {
         assertTrue(ToolbarItem.CLEAR in toolbarItemsFor(AgentCli.CODEX))
+    }
+
+    @Test
+    fun `Codex exposes Model via its interactive picker`() {
+        assertTrue(ToolbarItem.MODEL in toolbarItemsFor(AgentCli.CODEX))
     }
 
     @Test

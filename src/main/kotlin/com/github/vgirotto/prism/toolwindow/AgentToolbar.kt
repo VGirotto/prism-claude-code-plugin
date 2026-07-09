@@ -148,11 +148,71 @@ private class TemplatesAction(private val project: Project) : AnAction(
     }
 }
 
+/**
+ * Drives Codex's interactive `/model` picker via keystrokes.
+ *
+ * Codex has no argument form for `/model` and no separate effort command:
+ * `/model` opens a two-step popup — first "Select Model and Effort", then
+ * "Select Reasoning Level". Both steps are stable, 1-based numbered lists,
+ * and pressing a digit selects that row and advances/confirms in one press.
+ * Pressing Enter on the model step keeps the current model (its row is
+ * pre-highlighted) and advances to the effort step.
+ *
+ * The rows below match Codex CLI 0.143.x. If a user's account exposes a
+ * different model set the digit indices would shift, so both the Model and
+ * Effort buttons also offer an "Open picker" item that opens the native
+ * popup for manual selection.
+ */
+internal object CodexModelPicker {
+    /** Model id -> 1-based row in the "Select Model and Effort" step. */
+    val MODELS: List<Triple<String, Int, String>> = listOf(
+        Triple("gpt-5.5", 1, "toolbar.model.codex.gpt55"),
+        Triple("gpt-5.4", 2, "toolbar.model.codex.gpt54"),
+        Triple("gpt-5.4-mini", 3, "toolbar.model.codex.gpt54mini"),
+    )
+
+    /** Effort key -> 1-based row in the "Select Reasoning Level" step. */
+    val EFFORTS: List<Triple<String, Int, String>> = listOf(
+        Triple("low", 1, "toolbar.effort.codex.low"),
+        Triple("medium", 2, "toolbar.effort.codex.medium"),
+        Triple("high", 3, "toolbar.effort.codex.high"),
+        Triple("xhigh", 4, "toolbar.effort.codex.xhigh"),
+    )
+
+    private fun effortDigit(effort: String): Int? =
+        EFFORTS.firstOrNull { it.first == effort.lowercase() }?.second
+
+    /**
+     * Keystrokes to switch to model row [modelDigit] while preserving
+     * [currentEffort]. When the current effort is unknown, the effort step is
+     * confirmed with Enter, accepting the picked model's default level.
+     */
+    fun selectModel(modelDigit: Int, currentEffort: String): List<String> {
+        val effortStep = effortDigit(currentEffort)?.toString() ?: "\r"
+        return listOf("/model", "\r", modelDigit.toString(), effortStep)
+    }
+
+    /** Keystrokes to switch to effort row [effortDigit], keeping the current model. */
+    fun selectEffort(effortDigit: Int): List<String> =
+        listOf("/model", "\r", "\r", effortDigit.toString())
+
+    /** Open the model step for manual selection. */
+    val OPEN_MODEL: List<String> = listOf("/model", "\r")
+
+    /** Open the picker and advance to the effort step (keeping the current model). */
+    val OPEN_EFFORT: List<String> = listOf("/model", "\r", "\r")
+}
+
 private class ModelAction(private val project: Project) : AnAction(
     PrismBundle.message("toolbar.model"), PrismBundle.message("toolbar.model.desc"), AllIcons.Nodes.Models
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         val component = e.inputEvent?.component as? JComponent ?: return
+        if (activeAgentCli(project) == AgentCli.CODEX) showCodexModelMenu(component)
+        else showClaudeModelMenu(component)
+    }
+
+    private fun showClaudeModelMenu(component: JComponent) {
         val group = DefaultActionGroup().apply {
             for (model in listOf(
                 "opus" to PrismBundle.message("toolbar.model.opus"),
@@ -178,6 +238,32 @@ private class ModelAction(private val project: Project) : AnAction(
             .createActionPopupMenu("ClaudeModel", group)
         popup.component.show(component, 0, component.height)
     }
+
+    private fun showCodexModelMenu(component: JComponent) {
+        val mgr = AgentProcessManager.getInstance(project)
+        val group = DefaultActionGroup().apply {
+            for ((id, digit, labelKey) in CodexModelPicker.MODELS) {
+                add(object : AnAction(id, PrismBundle.message(labelKey), null), DumbAware {
+                    override fun actionPerformed(e: AnActionEvent) {
+                        mgr.sendSequence(CodexModelPicker.selectModel(digit, mgr.currentEffort))
+                        mgr.setSessionModel(id)
+                    }
+                    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+                })
+            }
+            addSeparator()
+            add(object : AnAction(PrismBundle.message("toolbar.model.picker"), PrismBundle.message("toolbar.model.picker.desc"), null), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                    mgr.sendSequence(CodexModelPicker.OPEN_MODEL)
+                }
+                override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            })
+        }
+        val popup = com.intellij.openapi.actionSystem.ActionManager.getInstance()
+            .createActionPopupMenu("CodexModel", group)
+        popup.component.show(component, 0, component.height)
+    }
+
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.MODEL)
     }

@@ -340,6 +340,62 @@ class AgentProcessManager(private val project: Project) : Disposable {
         }
     }
 
+    /**
+     * Sends an ordered list of input chunks to the active session, pausing
+     * [stepDelayMs] between successive chunks so an interactive TUI picker
+     * (e.g. Codex's `/model` or `/usage` flows) has time to render each prompt
+     * before the next keystroke arrives.
+     *
+     * Writes run on a background thread so the delays never block the EDT.
+     * Unlike [sendText] this never takes a file snapshot — every chunk is a
+     * picker keystroke, not a user prompt.
+     */
+    fun sendSequence(chunks: List<String>, stepDelayMs: Long = 700L) {
+        sendSequence(chunks, activeSessionId, stepDelayMs)
+    }
+
+    fun sendSequence(chunks: List<String>, sessionId: String?, stepDelayMs: Long = 700L) {
+        val session = sessionId?.let { sessions[it] } ?: return
+        val process = session.process
+        if (process == null || !process.isAlive) {
+            log.warn("Cannot send sequence: session not alive [${session.id}]")
+            return
+        }
+        if (chunks.isEmpty()) return
+
+        // A picker interaction behaves like a slash command: reset the idle flags so
+        // the idle monitor fires (and the UI auto-refreshes) once the output settles.
+        session.idleFiredForCurrentInteraction = false
+        session.outputActive = false
+
+        Thread {
+            try {
+                for ((index, chunk) in chunks.withIndex()) {
+                    if (index > 0) Thread.sleep(stepDelayMs)
+                    if (!process.isAlive) break
+                    process.outputStream.write(chunk.toByteArray(StandardCharsets.UTF_8))
+                    process.outputStream.flush()
+                }
+            } catch (e: Exception) {
+                log.warn("Failed to send sequence [${session.id}]", e)
+            }
+        }.start()
+    }
+
+    /** Optimistically records the active session's model and notifies the UI. */
+    fun setSessionModel(model: String) {
+        val session = activeSession ?: return
+        session.model = model
+        notifyStateListeners(session)
+    }
+
+    /** Optimistically records the active session's effort and notifies the UI. */
+    fun setSessionEffort(effort: String) {
+        val session = activeSession ?: return
+        session.effort = effort
+        notifyStateListeners(session)
+    }
+
     fun isSessionAlive(): Boolean = activeSession?.isAlive == true
 
     fun isSessionAlive(sessionId: String): Boolean = sessions[sessionId]?.isAlive == true

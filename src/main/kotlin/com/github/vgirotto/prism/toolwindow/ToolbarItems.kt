@@ -6,10 +6,12 @@ import com.github.vgirotto.prism.model.AgentCli
  * Identifies a toolbar action that can be enabled or hidden per CLI.
  *
  * The mapping in [toolbarItemsFor] is the single source of truth for
- * which toolbar entries make sense for each agent — actions whose
- * underlying CLI command is Claude-specific (e.g. /resume, /compact,
- * /model, /effort) are simply omitted for other agents until a
- * suitable equivalent is wired up.
+ * which toolbar entries make sense for each agent. An item is exposed for
+ * a CLI once its action knows how to drive that CLI — either because the
+ * underlying slash command is identical (e.g. /resume, /compact, /clear)
+ * or because the action branches to a CLI-specific flow (e.g. the Model,
+ * Effort and Cost buttons drive Codex's interactive pickers). Items are
+ * omitted for a CLI only until such an equivalent is wired up.
  */
 enum class ToolbarItem {
     RESUME,
@@ -34,6 +36,9 @@ private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
     // /clear ("clear the terminal and start a new chat") is the Codex equivalent
     // of Claude's /clear, so the shared ClearAction command works unchanged.
     ToolbarItem.CLEAR,
+    // Codex changes model via its interactive /model picker (see CodexModelPicker);
+    // the Model button drives that picker rather than sending "/model <name>".
+    ToolbarItem.MODEL,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )
