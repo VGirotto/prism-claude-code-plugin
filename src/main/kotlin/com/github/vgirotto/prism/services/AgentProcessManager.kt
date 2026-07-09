@@ -30,7 +30,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
     var activeSessionId: String? = null
         private set
 
-    /** Listeners notified when Claude finishes responding (idle detected) */
+    /** Listeners notified when the agent finishes responding (idle detected) */
     private val idleListeners = mutableListOf<(String) -> Unit>()
 
     /** Listeners notified when session state changes */
@@ -86,7 +86,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
     }
 
     /**
-     * Creates a new Claude session with its own PTY process.
+     * Creates a new agent session with its own PTY process.
      * Returns the session result containing the connector for the terminal widget.
      */
     fun createSession(
@@ -243,7 +243,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
     private fun startIdleMonitor(session: AgentSession) {
         session.idleTimer?.cancel()
-        session.idleTimer = Timer("ClaudeIdleMonitor-${session.id}", true)
+        session.idleTimer = Timer("AgentIdleMonitor-${session.id}", true)
         session.idleTimer?.scheduleAtFixedRate(object : TimerTask() {
             override fun run() {
                 val connector = session.connector ?: return
@@ -269,7 +269,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
     private fun startProcessHealthMonitor(session: AgentSession) {
         session.healthTimer?.cancel()
-        session.healthTimer = Timer("ClaudeHealthMonitor-${session.id}", true)
+        session.healthTimer = Timer("AgentHealthMonitor-${session.id}", true)
         session.healthTimer?.scheduleAtFixedRate(object : TimerTask() {
             override fun run() {
                 val process = session.process ?: return

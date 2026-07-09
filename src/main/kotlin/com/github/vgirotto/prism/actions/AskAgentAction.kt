@@ -10,7 +10,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.wm.ToolWindowManager
 
 /**
- * Context menu actions for "Ask Claude" submenu in the editor.
+ * Context menu actions for the "Ask Agent" submenu in the editor.
  * Each subclass sends the selection with a specific prompt prefix.
  */
 abstract class AskAgentAction(private val prompt: String) : AnAction() {
@@ -28,7 +28,7 @@ abstract class AskAgentAction(private val prompt: String) : AnAction() {
             if (lineRef != null) {
                 "$prompt $lineRef"
             } else {
-                contextProvider.formatSelectionForClaude(selectedText, file, prompt)
+                contextProvider.formatSelectionForAgent(selectedText, file, prompt)
             }
         } else if (file != null) {
             "$prompt ${contextProvider.formatFileReference(file)}"

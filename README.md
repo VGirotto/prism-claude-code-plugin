@@ -66,7 +66,7 @@ export JAVA_HOME="/path/to/your/IDE.app/Contents/jbr/Contents/Home"
 
 Full agent terminal running inside the IDE with ANSI color support and real PTY (pty4j + JediTerm). Pick Claude Code or Codex when starting a new session.
 
-Compact toolbar with quick actions: **Model** (opus/sonnet/haiku), **Effort** (auto/low/medium/high/max), **Cost**, **Resume**, **Compact**, and more for Claude sessions; **Templates**, **Cost**, and **Settings** are shared across all agents. Items wrapping Claude-only slash commands are hidden for Codex sessions.
+Compact toolbar with quick actions: **Resume**, **Compact**, **Clear**, **Model**, **Effort**, **Cost**, **Templates**, and **Settings**. Every button works in both Claude Code and Codex sessions, mapped to each agent's own commands (for example, **Cost** runs `/cost` for Claude and opens Codex's `/usage` token-activity views).
 
 <img src="docs/images/commands.gif" width="80%" />
 
@@ -142,9 +142,9 @@ Snapshot exclusions accept comma-separated names or wildcard patterns, for examp
 
 > On macOS, `Ctrl` refers to the physical Control key (not Cmd).
 
-#### Paste in the Claude terminal (Linux)
+#### Paste in the agent terminal (Linux)
 
-On Linux, `Ctrl+V` inspects the system clipboard: if it holds an image, the image bytes are written to a temporary PNG and the file path is pasted into the prompt (Claude attaches the file). Otherwise the clipboard text is pasted (wrapped in bracketed-paste escapes, so multi-line content doesn't auto-submit). Use `Ctrl+Shift+V` to force a plain-text paste. On macOS and Windows, `Ctrl+V` keeps its native Claude CLI behavior.
+On Linux, `Ctrl+V` inspects the system clipboard: if it holds an image, the image bytes are written to a temporary PNG and the file path is pasted into the prompt (the agent attaches the file). Otherwise the clipboard text is pasted (wrapped in bracketed-paste escapes, so multi-line content doesn't auto-submit). Use `Ctrl+Shift+V` to force a plain-text paste. On macOS and Windows, `Ctrl+V` keeps its native agent CLI behavior.
 
 ### 🔗 Quick Access
 

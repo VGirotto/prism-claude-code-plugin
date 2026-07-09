@@ -66,7 +66,7 @@ export JAVA_HOME="/caminho/para/sua/IDE.app/Contents/jbr/Contents/Home"
 
 Terminal completo do agente rodando dentro da IDE com suporte a cores ANSI e PTY real (pty4j + JediTerm). Escolha Claude Code ou Codex ao iniciar uma nova sessão.
 
-Toolbar compacta com ações rápidas: **Model** (opus/sonnet/haiku), **Effort** (auto/low/medium/high/max), **Cost**, **Resume**, **Compact** e mais para sessões Claude; **Templates**, **Cost** e **Settings** ficam disponíveis para todos os agentes. Itens que envolvem comandos de barra exclusivos do Claude ficam ocultos em sessões Codex.
+Toolbar compacta com ações rápidas: **Resume**, **Compact**, **Clear**, **Model**, **Effort**, **Cost**, **Templates** e **Settings**. Todos os botões funcionam tanto em sessões Claude Code quanto Codex, mapeados para os comandos de cada agente (por exemplo, **Cost** executa `/cost` no Claude e abre as visões de atividade de tokens do `/usage` no Codex).
 
 <img src="docs/images/commands.gif" width="80%" />
 
@@ -142,9 +142,9 @@ Exclusões de snapshot aceitam nomes ou padrões curinga separados por vírgula,
 
 > No macOS, `Ctrl` = tecla Control física (não Cmd).
 
-#### Colar no terminal Claude (Linux)
+#### Colar no terminal do agente (Linux)
 
-No Linux, `Ctrl+V` inspeciona a área de transferência: se contiver uma imagem, os bytes são gravados em um PNG temporário e o caminho do arquivo é colado no prompt (o Claude anexa o arquivo). Caso contrário, o texto da área de transferência é colado (envolto em escapes de bracketed paste, então conteúdo de múltiplas linhas não é submetido automaticamente). Use `Ctrl+Shift+V` para forçar uma colagem de texto puro. No macOS e Windows, `Ctrl+V` mantém o comportamento nativo do Claude CLI.
+No Linux, `Ctrl+V` inspeciona a área de transferência: se contiver uma imagem, os bytes são gravados em um PNG temporário e o caminho do arquivo é colado no prompt (o agente anexa o arquivo). Caso contrário, o texto da área de transferência é colado (envolto em escapes de bracketed paste, então conteúdo de múltiplas linhas não é submetido automaticamente). Use `Ctrl+Shift+V` para forçar uma colagem de texto puro. No macOS e Windows, `Ctrl+V` mantém o comportamento nativo do CLI do agente.
 
 ### 🔗 Acessos Rápidos
 

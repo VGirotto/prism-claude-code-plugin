@@ -7,7 +7,7 @@ import java.util.Timer
 import java.util.UUID
 
 /**
- * Represents a single Claude Code session with its own process, state, and metadata.
+ * Represents a single agent session with its own process, state, and metadata.
  */
 class AgentSession(
     val id: String = UUID.randomUUID().toString(),

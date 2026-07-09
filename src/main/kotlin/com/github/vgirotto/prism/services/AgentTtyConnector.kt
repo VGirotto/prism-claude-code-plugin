@@ -42,7 +42,7 @@ class AgentTtyConnector(
     @Volatile
     private var lastOutputTime = 0L
 
-    /** Buffer initial output to parse model/effort from Claude startup banner */
+    /** Buffer initial output to parse model/effort from the agent's startup banner */
     private val startupBuffer = StringBuilder()
 
     @Volatile
@@ -101,7 +101,7 @@ class AgentTtyConnector(
     /**
      * Returns true if the buffer contains printable text (not just escape sequences).
      * Cursor blink is typically pure CSI sequences (\e[?25h / \e[?25l) with no printable chars.
-     * Real Claude output always contains printable characters (text, code, etc.).
+     * Real agent output always contains printable characters (text, code, etc.).
      */
     private fun containsPrintableText(buf: CharArray, offset: Int, length: Int): Boolean {
         var i = offset

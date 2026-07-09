@@ -29,7 +29,7 @@ class SendSelectionAction : AnAction() {
         val processManager = AgentProcessManager.getInstance(project)
         processManager.sendText(message)
 
-        // Activate the Claude tool window
+        // Activate the agent tool window
         ToolWindowManager.getInstance(project)
             .getToolWindow("Prism")
             ?.activate(null)

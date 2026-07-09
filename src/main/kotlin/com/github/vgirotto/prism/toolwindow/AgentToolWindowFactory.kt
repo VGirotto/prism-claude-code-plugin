@@ -156,7 +156,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             NotificationGroupManager.getInstance()
                 .getNotificationGroup("Prism")
                 .createNotification(
-                    "Claude Code",
+                    PrismBundle.message("notification.title"),
                     "Session '$sessionName' ended unexpectedly.\n\nClick 'Restart' to start a new session.",
                     NotificationType.WARNING
                 )
@@ -255,7 +255,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             // the PTY and the X11 clipboard isn't reliably readable by the child
             // process, so we paste from the JVM clipboard ourselves. On macOS and
             // Windows the native passthrough works well (Cmd+V pastes text, Ctrl+V
-            // pastes images via the Claude CLI), so we leave it untouched.
+            // pastes images via the agent CLI), so we leave it untouched.
             val pasteAction = if (SystemInfo.isLinux) {
                 object : DumbAwareAction() {
                     override fun actionPerformed(e: AnActionEvent) {
@@ -338,19 +338,19 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                         try {
                             terminalWidget.createTerminalSession(result.connector)
                             terminalWidget.start()
-                            log.info("Claude session started: $sessionName [${result.sessionId}]")
+                            log.info("Agent session started: $sessionName [${result.sessionId}]")
                         } catch (e: Exception) {
                             log.error("Failed to connect terminal session", e)
                             notifyError(project, PrismBundle.message("toolwindow.error.terminal", e.message ?: ""))
                         }
                     }
                 } catch (e: Exception) {
-                    log.error("Failed to create Claude process", e)
+                    log.error("Failed to create agent process", e)
                     notifyError(project, PrismBundle.message("toolwindow.error.start", e.message ?: ""))
                 }
             }
         } catch (e: Exception) {
-            log.error("Failed to create Claude terminal widget", e)
+            log.error("Failed to create agent terminal widget", e)
             showFallbackContent(project, toolWindow, e.message ?: "Unknown error")
         }
     }
@@ -455,7 +455,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         } catch (e: Exception) { false }
 
         // Image branch: save clipboard bytes to a temp PNG and paste the path.
-        // Pasting a path (rather than forwarding ^V) avoids depending on Claude's
+        // Pasting a path (rather than forwarding ^V) avoids depending on the agent's
         // own clipboard reader, which can't always pick up screenshots on Linux/X11.
         if (imageFlavorAvailable) {
             val path = saveClipboardImageToTempFile(clipboard)

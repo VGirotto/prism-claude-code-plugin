@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 import javax.swing.*
 
 /**
- * Panel for browsing Claude Code conversation history using native IntelliJ components.
+ * Panel for browsing agent conversation history using native IntelliJ components.
  * Respects IDE theme (Darcula/Light) automatically via JBColor and UIUtil.
  */
 class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {

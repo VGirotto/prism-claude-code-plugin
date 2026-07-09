@@ -18,7 +18,7 @@
         <li><strong>Multi-Agent</strong> — Run Claude Code and Codex sessions side by side; pick at session start</li>
         <li><strong>Agent Changes Panel</strong> — Per-interaction diff view with history navigation and one-click revert</li>
         <li><strong>Context Menu</strong> — Explain, Review, Fix, Generate Tests, Refactor from the editor</li>
-        <li><strong>Toolbar</strong> — Model (opus/sonnet/haiku), Effort, Cost, Resume, Compact (Claude); shared Templates, Cost, Settings for every agent</li>
+        <li><strong>Toolbar</strong> — Resume, Compact, Clear, Model, Effort, Cost, Templates, and Settings, each mapped to the active agent's own commands</li>
         <li><strong>Prompt Templates</strong> — Reusable templates with {selection}, {file}, {language} variables</li>
         <li><strong>Conversation History</strong> — Browse and resume past conversations from the active agent with full-text search</li>
         <li><strong>Multi-Session</strong> — Multiple simultaneous sessions in independent tabs</li>
@@ -55,7 +55,7 @@
         <li>New: <strong>CLI picker</strong> on the New Session button when more than one agent is installed</li>
         <li>New: <strong>Default agent</strong> setting and dedicated Codex executable path</li>
         <li>New: <strong>Codex history</strong> — Conversation History reads sessions from <code>~/.codex/sessions</code></li>
-        <li>Change: Toolbar items wrapping Claude-only slash commands (/resume, /compact, /clear, /model, /effort) are hidden for Codex sessions</li>
+        <li>New: <strong>Full toolbar for Codex</strong> — Resume, Compact, Clear, Model, Effort, and Cost now work in Codex sessions, mapped to their Codex equivalents</li>
         <li>Change: User-facing UI strings generalized to refer to "the agent" rather than Claude where appropriate</li>
     </ul>
     <h2>v1.2.2 — Smart Paste on Linux</h2>
