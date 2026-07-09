@@ -16,7 +16,6 @@ class ToolbarItemsTest {
     fun `Codex omits Claude-specific items`() {
         val items = toolbarItemsFor(AgentCli.CODEX)
         for (claudeOnly in listOf(
-            ToolbarItem.RESUME,
             ToolbarItem.COMPACT,
             ToolbarItem.CLEAR,
             ToolbarItem.MODEL,
@@ -27,6 +26,11 @@ class ToolbarItemsTest {
         )) {
             assertFalse(claudeOnly in items, "Codex should not expose $claudeOnly")
         }
+    }
+
+    @Test
+    fun `Codex exposes Resume with identical command`() {
+        assertTrue(ToolbarItem.RESUME in toolbarItemsFor(AgentCli.CODEX))
     }
 
     @Test

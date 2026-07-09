@@ -25,6 +25,9 @@ enum class ToolbarItem {
 private val CLAUDE_ITEMS: Set<ToolbarItem> = ToolbarItem.values().toSet()
 
 private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
+    // Codex exposes /resume with the same "pick a saved conversation" semantics
+    // as Claude, so the button maps to the identical command.
+    ToolbarItem.RESUME,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )
