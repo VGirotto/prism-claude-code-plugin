@@ -28,6 +28,9 @@ private val CODEX_ITEMS: Set<ToolbarItem> = setOf(
     // Codex exposes /resume with the same "pick a saved conversation" semantics
     // as Claude, so the button maps to the identical command.
     ToolbarItem.RESUME,
+    // /compact ("Summarize the visible conversation to free tokens") behaves the
+    // same on Codex, so the shared CompactAction command works unchanged.
+    ToolbarItem.COMPACT,
     ToolbarItem.TEMPLATES,
     ToolbarItem.SETTINGS,
 )

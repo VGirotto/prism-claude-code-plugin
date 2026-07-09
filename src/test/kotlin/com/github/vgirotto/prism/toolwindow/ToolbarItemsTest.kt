@@ -16,7 +16,6 @@ class ToolbarItemsTest {
     fun `Codex omits Claude-specific items`() {
         val items = toolbarItemsFor(AgentCli.CODEX)
         for (claudeOnly in listOf(
-            ToolbarItem.COMPACT,
             ToolbarItem.CLEAR,
             ToolbarItem.MODEL,
             ToolbarItem.EFFORT,
@@ -31,6 +30,11 @@ class ToolbarItemsTest {
     @Test
     fun `Codex exposes Resume with identical command`() {
         assertTrue(ToolbarItem.RESUME in toolbarItemsFor(AgentCli.CODEX))
+    }
+
+    @Test
+    fun `Codex exposes Compact with identical command`() {
+        assertTrue(ToolbarItem.COMPACT in toolbarItemsFor(AgentCli.CODEX))
     }
 
     @Test
