@@ -5,8 +5,10 @@ import com.github.vgirotto.prism.model.AgentCli
 import com.github.vgirotto.prism.services.AgentSettingsState
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.options.BoundConfigurable
+import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.dsl.builder.COLUMNS_LARGE
 import com.intellij.ui.dsl.builder.bindIntValue
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
@@ -36,15 +38,14 @@ class AgentSettingsConfigurable : BoundConfigurable(PrismBundle.message("setting
                     AgentCli.CLAUDE to "Claude Code",
                     AgentCli.CODEX to "Codex",
                 )
-                val ordered = AgentCli.values().toList()
-                comboBox(ordered.map { labels.getValue(it) })
-                    .applyToComponent {
-                        selectedIndex = ordered.indexOf(settings.defaultCli).coerceAtLeast(0)
-                    }
-                    .onChanged {
-                        val idx = it.selectedIndex
-                        if (idx >= 0) settings.defaultCli = ordered[idx]
-                    }
+                // bindItem lets the framework track modifications, so Apply/Cancel
+                // behave per the IntelliJ settings contract instead of the combo
+                // mutating the persistent setting the moment the selection changes.
+                comboBox(
+                    AgentCli.entries,
+                    SimpleListCellRenderer.create("") { labels.getValue(it) },
+                )
+                    .bindItem({ settings.defaultCli }, { settings.defaultCli = it ?: AgentCli.DEFAULT })
                     .comment(PrismBundle.message("settings.default.cli.comment"))
             }
         }
