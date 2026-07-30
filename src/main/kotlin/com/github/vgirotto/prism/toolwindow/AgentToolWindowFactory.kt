@@ -179,21 +179,41 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         changesVisible: Boolean,
         cli: AgentCli = AgentSettingsState.getInstance().defaultCli,
     ) {
-        // Validate the requested CLI is available before creating UI.
-        // Uses the user-configured path so custom binary locations are honored.
+        // Validate the requested CLI is available before creating UI, using the
+        // user-configured path so custom binary locations are honored. The check
+        // can invoke `which` with a multi-second timeout, and IntelliJ forbids
+        // blocking I/O on the EDT, so resolve it on a pooled thread and build the
+        // tab UI back on the EDT once the CLI is confirmed present.
         val settings = AgentSettingsState.getInstance()
-        val available = when (cli) {
-            AgentCli.CLAUDE ->
-                ClaudeValidationService.getInstance().isClaudeAvailable(settings.claudePath)
-            AgentCli.CODEX ->
-                CodexValidationService.getInstance().isCodexAvailable(settings.codexPath)
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val available = when (cli) {
+                AgentCli.CLAUDE ->
+                    ClaudeValidationService.getInstance().isClaudeAvailable(settings.claudePath)
+                AgentCli.CODEX ->
+                    CodexValidationService.getInstance().isCodexAvailable(settings.codexPath)
+            }
+            ApplicationManager.getApplication().invokeLater {
+                if (!available) {
+                    log.warn("${cli.name.lowercase()} CLI not found at configured path or on PATH")
+                    showCliNotFoundError(project, toolWindow, cli)
+                    return@invokeLater
+                }
+                buildSessionTab(project, toolWindow, changesVisible, cli)
+            }
         }
-        if (!available) {
-            log.warn("${cli.name.lowercase()} CLI not found at configured path or on PATH")
-            showCliNotFoundError(project, toolWindow, cli)
-            return
-        }
+    }
 
+    /**
+     * Builds the tab UI (terminal, toolbar, diff panel) and starts the agent
+     * session. Must run on the EDT; [createSessionTab] performs the off-EDT
+     * availability preflight before invoking this.
+     */
+    private fun buildSessionTab(
+        project: Project,
+        toolWindow: ToolWindow,
+        changesVisible: Boolean,
+        cli: AgentCli,
+    ) {
         val disposable = Disposer.newDisposable("AgentSession")
         Disposer.register(toolWindow.disposable, disposable)
 

@@ -8,6 +8,7 @@ import com.github.vgirotto.prism.services.CodexValidationService
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupStep
@@ -32,18 +33,24 @@ class NewSessionPopupAction(
 ) {
 
     override fun actionPerformed(e: AnActionEvent) {
-        val installed = installedCliS()
-        when {
-            installed.isEmpty() -> {
-                // Let createSessionTab surface the not-installed error for the default CLI.
-                createSessionTab(AgentSettingsState.getInstance().defaultCli)
+        // Availability checks can invoke `which` with a multi-second timeout, and
+        // IntelliJ forbids blocking I/O on the EDT. Resolve the installed CLIs on a
+        // pooled thread, then marshal the popup/session UI back to the EDT.
+        val anchor = e.inputEvent?.component as? JComponent
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val installed = installedCliS()
+            ApplicationManager.getApplication().invokeLater {
+                when {
+                    // Let createSessionTab surface the not-installed error for the default CLI.
+                    installed.isEmpty() -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
+                    installed.size == 1 -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
+                    else -> showPicker(anchor, installed)
+                }
             }
-            installed.size == 1 -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
-            else -> showPicker(e, installed)
         }
     }
 
-    private fun showPicker(e: AnActionEvent, installed: List<AgentCli>) {
+    private fun showPicker(anchor: JComponent?, installed: List<AgentCli>) {
         val defaultCli = AgentSettingsState.getInstance().defaultCli
         val ordered = listOf(defaultCli).filter { it in installed } + (installed - defaultCli)
 
@@ -56,11 +63,10 @@ class NewSessionPopupAction(
             }
         )
 
-        val component = e.inputEvent?.component as? JComponent
-        if (component != null) {
-            popup.showUnderneathOf(component)
+        if (anchor != null) {
+            popup.showUnderneathOf(anchor)
         } else {
-            popup.showInBestPositionFor(e.dataContext)
+            popup.showInFocusCenter()
         }
     }
 
