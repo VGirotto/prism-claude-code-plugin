@@ -19,10 +19,11 @@ import javax.swing.JComponent
  * "+ New Session" entry point on the tool-window title bar.
  *
  * If both supported agent CLIs are installed, clicking opens a small
- * popup so the user can pick one. If no picker is shown, the configured
- * [AgentSettingsState.defaultCli] is used so a missing default agent
- * surfaces its own installation/configuration error instead of silently
- * launching a different CLI.
+ * popup so the user can pick one. If exactly one is installed, that CLI is
+ * launched directly — a Codex-only (or Claude-only) user should not hit a
+ * "not found" error for the other agent just because it is the configured
+ * [AgentSettingsState.defaultCli]. If none is installed, the default CLI is
+ * used so its own installation/configuration error surfaces.
  */
 class NewSessionPopupAction(
     private val createSessionTab: (AgentCli) -> Unit,
@@ -43,7 +44,8 @@ class NewSessionPopupAction(
                 when {
                     // Let createSessionTab surface the not-installed error for the default CLI.
                     installed.isEmpty() -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
-                    installed.size == 1 -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
+                    // Exactly one installed: launch it, not the (possibly absent) default.
+                    installed.size == 1 -> createSessionTab(installed.first())
                     else -> showPicker(anchor, installed)
                 }
             }
