@@ -365,6 +365,9 @@ class AgentProcessManager(private val project: Project) : Disposable {
      * Writes run on a background thread so the delays never block the EDT.
      * Unlike [sendText] this never takes a file snapshot — every chunk is a
      * picker keystroke, not a user prompt.
+     *
+     * The 700 ms default was verified against Codex CLI 0.146.x; revisit it if a
+     * future CLI renders its pickers more slowly.
      */
     fun sendSequence(chunks: List<String>, stepDelayMs: Long = 700L) {
         sendSequence(chunks, activeSessionId, stepDelayMs)
