@@ -3,6 +3,8 @@ package com.github.vgirotto.prism.settings
 import com.github.vgirotto.prism.i18n.PrismBundle
 import com.github.vgirotto.prism.model.AgentCli
 import com.github.vgirotto.prism.services.AgentSettingsState
+import com.github.vgirotto.prism.services.ClaudeValidationService
+import com.github.vgirotto.prism.services.CodexValidationService
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.ui.SimpleListCellRenderer
@@ -17,6 +19,13 @@ import com.intellij.ui.dsl.builder.panel as dslPanel
 class AgentSettingsConfigurable : BoundConfigurable(PrismBundle.message("settings.title")) {
 
     private val settings = AgentSettingsState.getInstance()
+
+    override fun apply() {
+        super.apply()
+        // CLI path edits land in settings here; re-resolve on the next lookup.
+        ClaudeValidationService.getInstance().invalidateCache()
+        CodexValidationService.getInstance().invalidateCache()
+    }
 
     override fun createPanel() = dslPanel {
         group(PrismBundle.message("settings.group.general")) {

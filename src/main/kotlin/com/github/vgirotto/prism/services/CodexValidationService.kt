@@ -13,16 +13,7 @@ class CodexValidationService {
 
     private val log = Logger.getInstance(CodexValidationService::class.java)
 
-    private val locator = CliBinaryLocator(
-        binaryName = "codex",
-        candidatePaths = listOf(
-            "~/.local/bin/codex",       // pipx / user-local install on Linux/Mac
-            "~/.npm-global/bin/codex",  // alternative npm global directory
-            "/usr/local/bin/codex",     // Homebrew on Intel Mac
-            "/opt/homebrew/bin/codex",  // Homebrew on Apple Silicon Mac
-            "/usr/bin/codex",
-        ),
-    )
+    private val locator get() = LOCATOR
 
     /** True if the Codex CLI is available in known locations or on PATH. */
     fun isCodexAvailable(): Boolean = locator.exists()
@@ -61,7 +52,24 @@ class CodexValidationService {
         """.trimMargin()
     }
 
+    /** Drops memoized path lookups; call when the configured CLI path may have changed. */
+    fun invalidateCache() = locator.invalidate()
+
     companion object {
-        fun getInstance(): CodexValidationService = CodexValidationService()
+        // Shared so the memoized lookup survives across getInstance() calls.
+        private val LOCATOR = CliBinaryLocator(
+            binaryName = "codex",
+            candidatePaths = listOf(
+                "~/.local/bin/codex",       // pipx / user-local install on Linux/Mac
+                "~/.npm-global/bin/codex",  // alternative npm global directory
+                "/usr/local/bin/codex",     // Homebrew on Intel Mac
+                "/opt/homebrew/bin/codex",  // Homebrew on Apple Silicon Mac
+                "/usr/bin/codex",
+            ),
+        )
+
+        private val INSTANCE = CodexValidationService()
+
+        fun getInstance(): CodexValidationService = INSTANCE
     }
 }

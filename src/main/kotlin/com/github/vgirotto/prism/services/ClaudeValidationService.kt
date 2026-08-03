@@ -10,16 +10,7 @@ class ClaudeValidationService {
 
     private val log = Logger.getInstance(ClaudeValidationService::class.java)
 
-    private val locator = CliBinaryLocator(
-        binaryName = "claude",
-        candidatePaths = listOf(
-            "~/.local/bin/claude",       // npm install -g default on Linux/Mac
-            "~/.npm-global/bin/claude",  // alternative npm global directory
-            "/usr/local/bin/claude",     // Homebrew on Intel Mac
-            "/opt/homebrew/bin/claude",  // Homebrew on Apple Silicon Mac
-            "/usr/bin/claude",
-        ),
-    )
+    private val locator get() = LOCATOR
 
     /** True if the Claude CLI is available in known locations or on PATH. */
     fun isClaudeAvailable(): Boolean = locator.exists()
@@ -94,7 +85,24 @@ class ClaudeValidationService {
         """.trimMargin()
     }
 
+    /** Drops memoized path lookups; call when the configured CLI path may have changed. */
+    fun invalidateCache() = locator.invalidate()
+
     companion object {
-        fun getInstance(): ClaudeValidationService = ClaudeValidationService()
+        // Shared so the memoized lookup survives across getInstance() calls.
+        private val LOCATOR = CliBinaryLocator(
+            binaryName = "claude",
+            candidatePaths = listOf(
+                "~/.local/bin/claude",       // npm install -g default on Linux/Mac
+                "~/.npm-global/bin/claude",  // alternative npm global directory
+                "/usr/local/bin/claude",     // Homebrew on Intel Mac
+                "/opt/homebrew/bin/claude",  // Homebrew on Apple Silicon Mac
+                "/usr/bin/claude",
+            ),
+        )
+
+        private val INSTANCE = ClaudeValidationService()
+
+        fun getInstance(): ClaudeValidationService = INSTANCE
     }
 }
