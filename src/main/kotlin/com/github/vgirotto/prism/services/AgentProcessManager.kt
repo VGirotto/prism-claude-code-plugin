@@ -88,17 +88,23 @@ class AgentProcessManager(private val project: Project) : Disposable {
     /**
      * Creates a new agent session with its own PTY process.
      * Returns the session result containing the connector for the terminal widget.
+     *
+     * [resolvedBinary] is the absolute path the availability preflight resolved, and is
+     * shell-quoted before being typed into the PTY. Falls back to the configured value,
+     * which may carry arguments and so is passed through verbatim.
      */
     fun createSession(
         sessionName: String = "Chat",
         cli: AgentCli = AgentSettingsState.getInstance().defaultCli,
+        resolvedBinary: String? = null,
     ): SessionResult {
         val session = AgentSession(name = sessionName, cli = cli)
         loadModelFromAgentSettings(session)
         session.state = SessionState.STARTING
 
         val settings = AgentSettingsState.getInstance()
-        val binaryPath = settings.cliPath(cli)
+        val binaryPath = resolvedBinary ?: settings.cliPath(cli)
+        val launchCommand = if (resolvedBinary != null) shellQuote(resolvedBinary) else binaryPath
         val shell = settings.shellPath
 
         val env = HashMap(System.getenv())
@@ -154,7 +160,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
             try {
                 Thread.sleep(500)
                 if (process.isAlive) {
-                    val cmd = "$binaryPath\n"
+                    val cmd = "$launchCommand\n"
                     process.outputStream.write(cmd.toByteArray(StandardCharsets.UTF_8))
                     process.outputStream.flush()
                     log.info("Sent ${cli.name.lowercase()} command to shell [${session.id}]")
@@ -477,3 +483,12 @@ internal fun codexSubmitChunks(text: String): List<String>? {
     if (!text.endsWith("\n") && !text.endsWith("\r")) return null
     return listOf(text.trimEnd('\r', '\n'), "\r")
 }
+
+/**
+ * Single-quotes [path] for the POSIX shell the session command is typed into,
+ * so a resolved binary path containing spaces or shell metacharacters launches
+ * as one word. Embedded single quotes are closed, escaped, and reopened —
+ * `it's/codex` becomes `'it'\''s/codex'`.
+ */
+internal fun shellQuote(path: String): String =
+    "'" + path.replace("'", "'\\''") + "'"

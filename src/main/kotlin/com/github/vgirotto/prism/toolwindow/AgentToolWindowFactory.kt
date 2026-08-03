@@ -186,19 +186,22 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         // tab UI back on the EDT once the CLI is confirmed present.
         val settings = AgentSettingsState.getInstance()
         ApplicationManager.getApplication().executeOnPooledThread {
-            val available = when (cli) {
+            // Keep the resolved absolute path, not just a yes/no: the session
+            // launches this exact binary instead of re-resolving the configured
+            // string through the shell's own PATH.
+            val resolvedBinary = when (cli) {
                 AgentCli.CLAUDE ->
-                    ClaudeValidationService.getInstance().isClaudeAvailable(settings.claudePath)
+                    ClaudeValidationService.getInstance().getClaudePath(settings.claudePath)
                 AgentCli.CODEX ->
-                    CodexValidationService.getInstance().isCodexAvailable(settings.codexPath)
+                    CodexValidationService.getInstance().getCodexPath(settings.codexPath)
             }
             ApplicationManager.getApplication().invokeLater {
-                if (!available) {
+                if (resolvedBinary == null) {
                     log.warn("${cli.name.lowercase()} CLI not found at configured path or on PATH")
                     showCliNotFoundError(project, toolWindow, cli)
                     return@invokeLater
                 }
-                buildSessionTab(project, toolWindow, changesVisible, cli)
+                buildSessionTab(project, toolWindow, changesVisible, cli, resolvedBinary)
             }
         }
     }
@@ -213,6 +216,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         toolWindow: ToolWindow,
         changesVisible: Boolean,
         cli: AgentCli,
+        resolvedBinary: String,
     ) {
         val disposable = Disposer.newDisposable("AgentSession")
         Disposer.register(toolWindow.disposable, disposable)
@@ -349,7 +353,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             ApplicationManager.getApplication().executeOnPooledThread {
                 try {
                     val pm = AgentProcessManager.getInstance(project)
-                    val result = pm.createSession(sessionName, cli)
+                    val result = pm.createSession(sessionName, cli, resolvedBinary)
 
                     content.putUserData(SESSION_ID_KEY, result.sessionId)
                     pm.setActiveSession(result.sessionId)
