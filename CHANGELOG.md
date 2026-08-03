@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical
 
+- CLI binary lookups are memoized instead of re-resolved on every New Session click, keyed by the configured path and dropped on Settings > Apply. A cached path is still checked for executability on each use, and a "not found" answer expires after 60s, so a CLI installed or removed mid-session needs no IDE restart.
+- Sessions launch the absolute binary path the availability preflight already resolved, rather than re-resolving the configured name through the login shell's PATH.
+- New-session startup logs phase timings at INFO, measured monotonically: four lines greppable as `timing:` (click → availability → UI, preflight resolve, PTY spawn, first shell output), plus a launch-relative offset appended to the existing `Startup parsed` line.
 - Replaced Claude-specific session, process, terminal, settings, toolbar, and tool-window classes with agent-aware equivalents.
 - Split conversation history parsing behind a `HistoryReader` interface with dedicated Claude and Codex readers.
 - Added shared CLI binary lookup and Codex validation services, plus tests for agent settings, Codex history parsing, toolbar availability, banner parsing, and CLI path resolution.
