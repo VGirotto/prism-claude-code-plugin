@@ -57,6 +57,39 @@ class BannerParserTest {
     }
 
     @Test
+    fun `Codex parser reads the effort from the model line`() {
+        val banner = "│ model:     gpt-5.6-terra high   /model to change │"
+        val parsed = CodexBannerParser.parse(banner)
+        assertEquals("gpt-5.6-terra" to "high", parsed)
+    }
+
+    @Test
+    fun `Codex parser withholds a result while the model is still loading`() {
+        assertNull(CodexBannerParser.parse("│ model:     loading   /model to change │"))
+        assertNull(CodexBannerParser.parse("│ model:     loading...   /model to change │"))
+    }
+
+    @Test
+    fun `Codex parser skips the placeholder once the box repaints`() {
+        // Both paints, as a buffer of the whole startup burst holds them. Escapes are
+        // written as \u escapes to keep the source plain text (see BannerParser).
+        val banner = "│ model:     loading   /model to change │\n" +
+            "gpt-5.6-terra high · ~ · Context 100% left\n" +
+            "\u001B[K\u001B[2m│ model:     \u001B[22mgpt-5.6-terra high\u001B[2m   \u001B[22m/model to change │"
+        val parsed = CodexBannerParser.parse(banner)
+        assertEquals("gpt-5.6-terra" to "high", parsed)
+    }
+
+    @Test
+    fun `Codex parser waits out a model id cut off by a partial read`() {
+        assertNull(CodexBannerParser.parse("│ model:     gpt"))
+        assertEquals(
+            "gpt-5.6-terra" to "high",
+            CodexBannerParser.parse("│ model:     gpt-5.6-terra high   /model to change │"),
+        )
+    }
+
+    @Test
     fun `Codex parser returns null for non-matching output`() {
         assertNull(CodexBannerParser.parse("Welcome to a different tool"))
     }
