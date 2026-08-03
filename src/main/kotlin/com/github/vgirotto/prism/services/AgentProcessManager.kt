@@ -117,6 +117,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
         val command = arrayOf(shell, "-l", "-i")
 
+        session.launchStartedAtNanos = System.nanoTime()
         val process = PtyProcessBuilder(command)
             .setDirectory(workDir)
             .setEnvironment(env)
@@ -124,6 +125,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
             .setInitialColumns(120)
             .setInitialRows(40)
             .start()
+        log.info("timing: session [${session.id}] pty spawn ${session.elapsedSinceLaunchMs()} ms")
 
         val connector = AgentTtyConnector(
             process = process,
@@ -192,6 +194,12 @@ class AgentProcessManager(private val project: Project) : Disposable {
     }
 
     private fun onOutputActivity(session: AgentSession) {
+        // First printable byte out of the PTY: the login shell's own output, or the echo
+        // of the command typed after createSession's fixed delay — whichever lands first.
+        if (!session.firstOutputLogged) {
+            session.firstOutputLogged = true
+            log.info("timing: session [${session.id}] first shell output +${session.elapsedSinceLaunchMs()} ms")
+        }
         session.outputActive = true
         if (session.userHasInteracted && !session.idleFiredForCurrentInteraction) {
             val wasWorking = session.state == SessionState.WORKING
@@ -221,7 +229,10 @@ class AgentProcessManager(private val project: Project) : Disposable {
     private fun onStartupParsed(session: AgentSession, model: String, effort: String) {
         if (model.isNotEmpty()) session.model = model
         if (effort.isNotEmpty()) session.effort = effort
-        log.info("Startup parsed [${session.id}]: model=$model, effort=$effort")
+        log.info(
+            "Startup parsed [${session.id}]: model=$model, effort=$effort" +
+                " (+${session.elapsedSinceLaunchMs()} ms)"
+        )
         notifyStateListeners(session)
     }
 

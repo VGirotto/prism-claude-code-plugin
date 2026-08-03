@@ -5,6 +5,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.util.Timer
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * Represents a single agent session with its own process, state, and metadata.
@@ -28,9 +29,20 @@ class AgentSession(
     @Volatile var idleFiredForCurrentInteraction: Boolean = false
     @Volatile var snapshotTakenForCurrentInput: Boolean = false
 
+    /** Monotonic reading taken as the session launch begins; 0 until it does. */
+    @Volatile var launchStartedAtNanos: Long = 0L
+
+    /** Guards the one-shot "first output" startup timing log. */
+    @Volatile var firstOutputLogged: Boolean = false
+
     enum class SessionState { STOPPED, STARTING, IDLE, WORKING }
 
     val isAlive: Boolean get() = process?.isAlive == true
+
+    /** Ms since the launch began, or -1 if this session hasn't started yet. */
+    fun elapsedSinceLaunchMs(): Long =
+        if (launchStartedAtNanos == 0L) -1
+        else TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - launchStartedAtNanos)
 
     override fun dispose() {
         idleTimer?.cancel()

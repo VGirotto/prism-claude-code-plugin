@@ -189,12 +189,18 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             // Keep the resolved absolute path, not just a yes/no: the session
             // launches this exact binary instead of re-resolving the configured
             // string through the shell's own PATH.
+            val preflightStartedAtNanos = System.nanoTime()
             val resolvedBinary = when (cli) {
                 AgentCli.CLAUDE ->
                     ClaudeValidationService.getInstance().getClaudePath(settings.claudePath)
                 AgentCli.CODEX ->
                     CodexValidationService.getInstance().getCodexPath(settings.codexPath)
             }
+            val preflightMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - preflightStartedAtNanos)
+            log.info(
+                "timing: ${cli.name.lowercase()} preflight resolve took $preflightMs ms" +
+                    " → ${resolvedBinary ?: "not found"}"
+            )
             ApplicationManager.getApplication().invokeLater {
                 if (resolvedBinary == null) {
                     log.warn("${cli.name.lowercase()} CLI not found at configured path or on PATH")

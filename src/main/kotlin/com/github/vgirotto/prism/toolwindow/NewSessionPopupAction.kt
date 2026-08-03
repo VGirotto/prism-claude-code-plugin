@@ -9,10 +9,12 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.PopupStep
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
+import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 
 /**
@@ -33,14 +35,26 @@ class NewSessionPopupAction(
     AllIcons.General.Add,
 ) {
 
+    private val log = Logger.getInstance(NewSessionPopupAction::class.java)
+
     override fun actionPerformed(e: AnActionEvent) {
         // Availability checks can invoke `which` with a multi-second timeout, and
         // IntelliJ forbids blocking I/O on the EDT. Resolve the installed CLIs on a
         // pooled thread, then marshal the popup/session UI back to the EDT.
+        val clickedAtNanos = System.nanoTime()
         val anchor = e.inputEvent?.component as? JComponent
         ApplicationManager.getApplication().executeOnPooledThread {
             val installed = installedCliS()
+            val resolvedAtNanos = System.nanoTime()
             ApplicationManager.getApplication().invokeLater {
+                // The click-to-popup phase has no other trace in the log, and it is the
+                // phase users perceive as "New Session is slow".
+                val availabilityMs = TimeUnit.NANOSECONDS.toMillis(resolvedAtNanos - clickedAtNanos)
+                val uiMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - clickedAtNanos)
+                log.info(
+                    "timing: new session click → availability $availabilityMs ms → ui $uiMs ms" +
+                        " (installed=${installed.joinToString(",") { it.name.lowercase() }.ifEmpty { "none" }})"
+                )
                 when {
                     // Let createSessionTab surface the not-installed error for the default CLI.
                     installed.isEmpty() -> createSessionTab(AgentSettingsState.getInstance().defaultCli)
