@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical
 
+- Codex model detection skips the `loading` placeholder Codex paints in its welcome box before the real model resolves, so the status bar shows the actual model instead of `loading` for the life of the session. The reasoning level is read from the same line, with the older separate `reasoning effort:` line kept as a fallback.
 - CLI binary lookups are memoized instead of re-resolved on every New Session click, keyed by the configured path and dropped on Settings > Apply. A cached path is still checked for executability on each use, and a "not found" answer expires after 60s, so a CLI installed or removed mid-session needs no IDE restart.
 - Sessions launch the absolute binary path the availability preflight already resolved, rather than re-resolving the configured name through the login shell's PATH.
 - New-session startup logs phase timings at INFO, measured monotonically: four lines greppable as `timing:` (click → availability → UI, preflight resolve, PTY spawn, first shell output), plus a launch-relative offset appended to the existing `Startup parsed` line.
