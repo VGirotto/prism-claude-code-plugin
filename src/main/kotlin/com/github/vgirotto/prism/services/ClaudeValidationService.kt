@@ -85,11 +85,7 @@ class ClaudeValidationService {
         """.trimMargin()
     }
 
-    /** Drops memoized path lookups; call when the configured CLI path may have changed. */
-    fun invalidateCache() = locator.invalidate()
-
     companion object {
-        // Shared so the memoized lookup survives across getInstance() calls.
         private val LOCATOR = CliBinaryLocator(
             binaryName = "claude",
             candidatePaths = listOf(

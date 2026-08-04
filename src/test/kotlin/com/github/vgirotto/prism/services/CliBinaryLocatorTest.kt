@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 class CliBinaryLocatorTest {
 
@@ -147,79 +146,31 @@ class CliBinaryLocatorTest {
     }
 
     @Test
-    fun `a cached hit skips the candidate scan`(@TempDir tmp: Path) {
-        val preferred = tmp.resolve("preferred-cli")
-        val fallback = executable(tmp, "fallback-cli")
+    fun `an install mid-session is picked up by the next lookup`(@TempDir tmp: Path) {
+        val fake = tmp.resolve("fake-cli")
+        val locator = locator(binaryName = "fake-cli", candidatePaths = listOf(fake.toString()))
+        assertNull(locator.locate())
 
-        val locator = locator(
-            binaryName = "fake-cli",
-            candidatePaths = listOf(preferred.toString(), fallback.toString()),
-        )
-        assertEquals(fallback.toString(), locator.locate())
-
-        // The higher-priority candidate appears afterwards. A cached hit is only
-        // re-stat'd, never re-searched, so the answer stands.
-        executable(tmp, "preferred-cli")
-        assertEquals(fallback.toString(), locator.locate())
+        // Installed, or upgraded in place, with nothing to invalidate a cache: an
+        // in-place `npm install -g` briefly unlinks the binary, and a remembered miss
+        // would outlive the upgrade and report the CLI as absent.
+        executable(tmp, "fake-cli")
+        assertEquals(fake.toString(), locator.locate())
     }
 
     @Test
-    fun `a cached hit is dropped once the binary stops being executable`(@TempDir tmp: Path) {
+    fun `an uninstall mid-session stops resolving`(@TempDir tmp: Path) {
         val fake = executable(tmp, "fake-cli")
-
         val locator = locator(binaryName = "fake-cli", candidatePaths = listOf(fake.toString()))
         assertEquals(fake.toString(), locator.locate())
 
-        // Uninstalled mid-session: handing out the cached path would launch a dead binary.
+        // Handing back a remembered path here would launch a binary that is gone.
         Files.delete(fake)
         assertNull(locator.locate())
         assertFalse(locator.exists())
     }
 
-    @Test
-    fun `invalidate forces the next lookup to re-check disk`(@TempDir tmp: Path) {
-        val fake = tmp.resolve("fake-cli")
-        val locator = locator(binaryName = "fake-cli", candidatePaths = listOf(fake.toString()))
-        assertNull(locator.locate())
 
-        executable(tmp, "fake-cli")
-        locator.invalidate()
-
-        assertEquals(fake.toString(), locator.locate())
-    }
-
-    @Test
-    fun `resolve caches per configured path so a changed path is looked up again`(@TempDir tmp: Path) {
-        val first = executable(tmp, "first-cli")
-
-        val locator = locator(binaryName = "fake-cli", candidatePaths = emptyList())
-        assertEquals(first.toString(), locator.resolve(first.toString()))
-        // A different configured path is a different cache key — no stale hit.
-        assertNull(locator.resolve(tmp.resolve("second-cli").toString()))
-    }
-
-    @Test
-    fun `a cached miss is trusted until the negative window lapses`(@TempDir tmp: Path) {
-        var nanos = 0L
-        val fake = tmp.resolve("fake-cli")
-        val locator = CliBinaryLocator(
-            binaryName = "fake-cli",
-            candidatePaths = listOf(fake.toString()),
-            negativeTtlMs = 60_000L,
-            nowNanos = { nanos },
-            pathEntries = { emptyList() },
-        )
-        assertNull(locator.locate())
-
-        // Installed without touching settings, so nothing invalidates the cache.
-        executable(tmp, "fake-cli")
-        nanos += TimeUnit.MILLISECONDS.toNanos(59_999)
-        assertNull(locator.locate())
-
-        // Past the window the miss is retried, so no IDE restart is needed.
-        nanos += TimeUnit.MILLISECONDS.toNanos(2)
-        assertEquals(fake.toString(), locator.locate())
-    }
 
     /**
      * PATH is always injected: the production default reads the login-shell
