@@ -10,28 +10,15 @@ import javax.swing.JComponent
 import javax.swing.SwingUtilities
 
 /**
- * Keeps a *held* Escape from reaching the agent after a popup has already answered it.
+ * Keeps a *held* Escape from reaching the agent after a popup has already answered it:
+ * auto-repeat delivers a run of presses, the first closes the popup, and the rest arrive
+ * with no popup left to claim them. A grace period cannot separate the two, since the
+ * repeat delay is a per-user OS setting.
  *
- * Escape over a session terminal has two plausible owners: an open popup wants to close,
- * and the agent behind it wants to interrupt. Holding the key makes both happen in
- * sequence — auto-repeat delivers one KEY_PRESSED after another, the first closes the
- * popup, and the next arrives with no popup left to claim it, so it reaches the PTY and
- * Codex answers "No previous messages to edit." for a keystroke the user spent on the
- * popup. A grace period after the popup closes cannot separate the two, because the
- * repeat delay is a per-user OS setting and can outlast any window worth picking.
- *
- * So the latch closes when Escape is pressed while a popup is up, and stays closed until
- * the key is physically released. The press that closes it is passed through untouched —
- * the popup still needs it — and so is every Escape not headed for [terminal], since
- * silencing the key for the rest of the IDE is none of this gate's business.
- *
- * Dropping events here, at the event queue, is deliberate: a forwarding action that
- * disabled itself instead would leave the keystroke unconsumed, and the terminal widget
- * writes Escape to the PTY through its own key handling, so it would arrive anyway by a
- * different route.
- *
- * Scoped to a session's [Disposable] rather than the application so the dispatcher cannot
- * outlive a plugin unload.
+ * Events are dropped here rather than by disabling the forwarding action because an
+ * unconsumed keystroke still reaches the PTY through the terminal widget's own key
+ * handling. Only events headed for [terminal] are dropped — silencing Escape for the rest
+ * of the IDE is none of this gate's business.
  */
 internal class EscapeKeyGate(
     private val terminal: JComponent,
@@ -52,8 +39,7 @@ internal class EscapeKeyGate(
     private fun dispatchEscape(event: AWTEvent): Boolean {
         if (event !is KeyEvent || !event.isEscape()) return false
         return when (event.id) {
-            // A popup anywhere in the IDE closes the latch, but only this session's terminal
-            // is ever silenced by it, so onPress runs first for its side effect.
+            // A popup anywhere closes the latch, so onPress runs first for its side effect.
             KeyEvent.KEY_PRESSED ->
                 latch.onPress(JBPopupFactory.getInstance().isPopupActive) && isBoundForTerminal(event)
 
@@ -82,12 +68,7 @@ internal class EscapeKeyGate(
     }
 }
 
-/**
- * Whether Escape is currently spoken for by a popup rather than by the agent.
- *
- * Split out of [EscapeKeyGate] so the press/release/expiry rules can be tested without an
- * event queue, a popup, or a running IDE.
- */
+/** Whether Escape is currently spoken for by a popup rather than by the agent. */
 internal class EscapeLatch(private val nowNanos: () -> Long = System::nanoTime) {
 
     private var closedAtNanos: Long? = null
@@ -109,11 +90,7 @@ internal class EscapeLatch(private val nowNanos: () -> Long = System::nanoTime) 
         closedAtNanos = null
     }
 
-    /**
-     * A release delivered to another window never reaches the queue, so the latch also
-     * expires on its own: a briefly swallowed Escape is a far smaller bug than one that
-     * stops interrupting the agent for the rest of the session.
-     */
+    /** Expires on its own, since a release delivered to another window never reaches us. */
     fun isClosed(): Boolean {
         val closedAt = closedAtNanos ?: return false
         if (nowNanos() - closedAt > EXPIRY_NANOS) {

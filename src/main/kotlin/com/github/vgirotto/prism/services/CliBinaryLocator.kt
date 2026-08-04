@@ -5,26 +5,18 @@ import com.intellij.util.EnvironmentUtil
 import java.io.File
 
 /**
- * Locates a CLI executable on the host machine by checking a list of
- * candidate paths, then falling back to a scan of the PATH the user's login
- * shell exports.
+ * Locates a CLI executable by checking a list of candidate paths, then scanning the
+ * PATH the user's login shell exports. Shared between the per-CLI validation services
+ * so lookup behavior stays uniform across agents.
  *
- * Shared between per-CLI validation services (Claude, Codex, ...) so the
- * lookup behavior stays uniform across agents.
+ * PATH comes from [EnvironmentUtil] rather than [System.getenv] because a GUI-launched
+ * IDE inherits the desktop session's environment — on macOS, launchd's
+ * `/usr/bin:/bin:/usr/sbin:/sbin` — which cannot see a CLI under `~/.local/bin`, nvm or
+ * Homebrew. That map is loaded once at IDE startup and may still be loading, so callers
+ * must stay off the EDT.
  *
- * PATH comes from [EnvironmentUtil], not [System.getenv]: a GUI-launched IDE
- * inherits its environment from the desktop session rather than from a login
- * shell, so on macOS the IDE process sees launchd's
- * `/usr/bin:/bin:/usr/sbin:/sbin` and a CLI under `~/.local/bin`, nvm, volta or
- * Homebrew is invisible to it even though `which` finds it in a terminal.
- * [EnvironmentUtil] runs the login shell once during IDE startup and caches the
- * result, so a lookup here costs a handful of stats and never spawns a process.
- * Because that map may still be loading, callers must stay off the EDT.
- *
- * Results are deliberately not memoized: a full miss over every candidate and
- * every PATH entry measures tens of microseconds, which is far below the cost of
- * being wrong. A cache that outlives an install, an upgrade or an uninstall
- * reports a CLI that isn't there, or hides one that is.
+ * Nothing is memoized: a full miss is tens of microseconds, while a stale answer
+ * survives an install or an uninstall and reports the wrong thing.
  */
 class CliBinaryLocator(
     private val binaryName: String,
@@ -64,8 +56,6 @@ class CliBinaryLocator(
 
         val expanded = expandHome(trimmed)
         if (!expanded.contains('/')) return onPath(trimmed)
-        // Logged like the other branches: without this, a configured path is the one
-        // resolution that leaves no trace in the log when a lookup has to be diagnosed.
         return if (isExecutable(expanded)) {
             log.debug("Found $binaryName at configured path: $expanded")
             expanded

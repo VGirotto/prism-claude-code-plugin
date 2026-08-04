@@ -73,11 +73,8 @@ class NewSessionPopupAction(
         val defaultCli = AgentSettingsState.getInstance().defaultCli
         val ordered = listOf(defaultCli).filter { it in installed } + (installed - defaultCli)
 
-        // The picker must hold keyboard focus while it is up. A session terminal
-        // forwards keystrokes to the PTY both through registered actions and through
-        // JediTerm's own key handling, so a popup shown without focus leaves the
-        // terminal as the key target and Escape reaches the running agent — Codex
-        // answers "No previous messages to edit." — instead of only closing the popup.
+        // Without focus the terminal stays the key target, and Escape reaches the running
+        // agent instead of closing the picker.
         val previousFocusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
         val popup = JBPopupFactory.getInstance().createPopupChooserBuilder(ordered)
             .setTitle("New Agent Session")
@@ -86,9 +83,7 @@ class NewSessionPopupAction(
             .setItemChosenCallback { createSessionTab(it) }
             .createPopup()
 
-        // Taking focus means giving it back: on cancel the user is still working in the
-        // terminal they came from. A chosen item is left alone, since the new session
-        // tab claims focus itself.
+        // Give focus back on cancel; a chosen item is left alone, since the new tab takes it.
         popup.addListener(object : JBPopupListener {
             override fun onClosed(event: LightweightWindowEvent) {
                 if (event.isOk) return

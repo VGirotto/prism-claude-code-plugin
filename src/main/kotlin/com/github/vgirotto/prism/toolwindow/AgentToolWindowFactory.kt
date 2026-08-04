@@ -232,10 +232,8 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             val settingsProvider = JBTerminalSystemSettingsProviderBase()
             val terminalWidget = JBTerminalWidget(project, settingsProvider, disposable)
 
-            // Escape belongs to whatever popup is open, not to the agent behind it. The
-            // picker takes keyboard focus so the press that closes it never reaches the
-            // terminal; the gate covers the auto-repeat presses that follow a held key,
-            // which arrive once the popup is already gone.
+            // The picker takes focus so the press that closes it never reaches the terminal;
+            // the gate covers the auto-repeat presses that arrive once the popup is gone.
             EscapeKeyGate(terminalWidget.component, disposable)
 
             val escapeAction = object : DumbAwareAction() {

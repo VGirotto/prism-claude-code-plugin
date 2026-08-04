@@ -104,10 +104,8 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
         val settings = AgentSettingsState.getInstance()
         val binaryPath = resolvedBinary ?: settings.cliPath(cli)
-        // `clear` runs after the interactive shell has echoed the line we typed and before
-        // the agent paints, which is the only ordering that reliably hides the prompt and
-        // the absolute binary path from the top of a fresh session. Clearing from our side
-        // instead would race the agent's first paint.
+        // `clear` runs after the shell echoes the line and before the agent paints, which
+        // hides the prompt without racing the agent's first paint.
         val launchCommand =
             "clear; " + if (resolvedBinary != null) shellQuote(resolvedBinary) else binaryPath
         val shell = settings.shellPath
