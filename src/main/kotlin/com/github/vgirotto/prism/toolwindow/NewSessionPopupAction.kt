@@ -38,9 +38,10 @@ class NewSessionPopupAction(
     private val log = Logger.getInstance(NewSessionPopupAction::class.java)
 
     override fun actionPerformed(e: AnActionEvent) {
-        // Availability checks can invoke `which` with a multi-second timeout, and
-        // IntelliJ forbids blocking I/O on the EDT. Resolve the installed CLIs on a
-        // pooled thread, then marshal the popup/session UI back to the EDT.
+        // Availability checks stat the filesystem and read the login-shell environment,
+        // which can block while the platform loads it, and IntelliJ forbids blocking I/O
+        // on the EDT. Resolve the installed CLIs on a pooled thread, then marshal the
+        // popup/session UI back to the EDT.
         val clickedAtNanos = System.nanoTime()
         val anchor = e.inputEvent?.component as? JComponent
         ApplicationManager.getApplication().executeOnPooledThread {

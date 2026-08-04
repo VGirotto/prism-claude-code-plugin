@@ -181,9 +181,10 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
     ) {
         // Validate the requested CLI is available before creating UI, using the
         // user-configured path so custom binary locations are honored. The check
-        // can invoke `which` with a multi-second timeout, and IntelliJ forbids
-        // blocking I/O on the EDT, so resolve it on a pooled thread and build the
-        // tab UI back on the EDT once the CLI is confirmed present.
+        // stats the filesystem and reads the login-shell environment, which can
+        // block while the platform loads it, and IntelliJ forbids blocking I/O on
+        // the EDT, so resolve it on a pooled thread and build the tab UI back on
+        // the EDT once the CLI is confirmed present.
         val settings = AgentSettingsState.getInstance()
         ApplicationManager.getApplication().executeOnPooledThread {
             // Keep the resolved absolute path, not just a yes/no: the session
