@@ -65,7 +65,10 @@ class ClaudeValidationService {
             |Install it with:
             |  npm install -g @anthropic-ai/claude-code
             |
-            |After installation, restart the IDE.
+            |Then just start a new session — no IDE restart needed.
+            |
+            |If it still isn't found, restart the IDE so it re-reads your
+            |shell's PATH, or set the full path in Settings > Prism.
         """.trimMargin()
     }
 

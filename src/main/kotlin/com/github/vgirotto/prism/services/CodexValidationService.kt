@@ -48,7 +48,10 @@ class CodexValidationService {
             |Install it with:
             |  npm install -g @openai/codex
             |
-            |After installation, restart the IDE.
+            |Then just start a new session — no IDE restart needed.
+            |
+            |If it still isn't found, restart the IDE so it re-reads your
+            |shell's PATH, or set the full path in Settings > Prism.
         """.trimMargin()
     }
 

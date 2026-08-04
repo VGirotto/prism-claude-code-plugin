@@ -431,7 +431,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 "<h3>$heading</h3>" +
                 "<p>Install it with:</p>" +
                 "<code>$installCmd</code>" +
-                "<p>Then restart the IDE</p>" +
+                "<p>Then start a new session</p>" +
                 "</center></html>",
             SwingConstants.CENTER
         )
