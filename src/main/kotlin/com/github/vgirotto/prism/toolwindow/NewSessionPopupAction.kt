@@ -12,8 +12,10 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.popup.JBPopupFactory
-import com.intellij.openapi.ui.popup.PopupStep
-import com.intellij.openapi.ui.popup.util.BaseListPopupStep
+import com.intellij.openapi.ui.popup.JBPopupListener
+import com.intellij.openapi.ui.popup.LightweightWindowEvent
+import com.intellij.ui.SimpleListCellRenderer
+import java.awt.KeyboardFocusManager
 import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 
@@ -71,14 +73,30 @@ class NewSessionPopupAction(
         val defaultCli = AgentSettingsState.getInstance().defaultCli
         val ordered = listOf(defaultCli).filter { it in installed } + (installed - defaultCli)
 
-        val popup = JBPopupFactory.getInstance().createListPopup(
-            object : BaseListPopupStep<AgentCli>("New Agent Session", ordered) {
-                override fun getTextFor(value: AgentCli): String = value.displayName()
+        // The picker must hold keyboard focus while it is up. A session terminal
+        // forwards keystrokes to the PTY both through registered actions and through
+        // JediTerm's own key handling, so a popup shown without focus leaves the
+        // terminal as the key target and Escape reaches the running agent — Codex
+        // answers "No previous messages to edit." — instead of only closing the popup.
+        val previousFocusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
+        val popup = JBPopupFactory.getInstance().createPopupChooserBuilder(ordered)
+            .setTitle("New Agent Session")
+            .setRenderer(SimpleListCellRenderer.create<AgentCli>("") { it.displayName() })
+            .setRequestFocus(true)
+            .setItemChosenCallback { createSessionTab(it) }
+            .createPopup()
 
-                override fun onChosen(selectedValue: AgentCli, finalChoice: Boolean): PopupStep<*>? =
-                    doFinalStep { createSessionTab(selectedValue) }
+        // Taking focus means giving it back: on cancel the user is still working in the
+        // terminal they came from. A chosen item is left alone, since the new session
+        // tab claims focus itself.
+        popup.addListener(object : JBPopupListener {
+            override fun onClosed(event: LightweightWindowEvent) {
+                if (event.isOk) return
+                ApplicationManager.getApplication().invokeLater {
+                    previousFocusOwner?.requestFocusInWindow()
+                }
             }
-        )
+        })
 
         if (anchor != null) {
             popup.showUnderneathOf(anchor)
