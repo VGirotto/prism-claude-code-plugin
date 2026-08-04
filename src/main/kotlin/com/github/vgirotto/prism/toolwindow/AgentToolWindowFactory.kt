@@ -236,7 +236,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             // picker takes keyboard focus so the press that closes it never reaches the
             // terminal; the gate covers the auto-repeat presses that follow a held key,
             // which arrive once the popup is already gone.
-            EscapeKeyGate(disposable)
+            EscapeKeyGate(terminalWidget.component, disposable)
 
             val escapeAction = object : DumbAwareAction() {
                 override fun actionPerformed(e: AnActionEvent) {

@@ -6,6 +6,8 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import java.awt.AWTEvent
 import java.awt.event.KeyEvent
 import java.util.concurrent.TimeUnit
+import javax.swing.JComponent
+import javax.swing.SwingUtilities
 
 /**
  * Keeps a *held* Escape from reaching the agent after a popup has already answered it.
@@ -18,22 +20,24 @@ import java.util.concurrent.TimeUnit
  * popup. A grace period after the popup closes cannot separate the two, because the
  * repeat delay is a per-user OS setting and can outlast any window worth picking.
  *
- * So the gate latches when Escape is pressed while a popup is up, and stays latched until
- * the key is physically released, dropping the repeats in between. The press that latches
- * is passed through untouched — the popup still needs it to close.
+ * So the latch closes when Escape is pressed while a popup is up, and stays closed until
+ * the key is physically released. The press that closes it is passed through untouched —
+ * the popup still needs it — and so is every Escape not headed for [terminal], since
+ * silencing the key for the rest of the IDE is none of this gate's business.
  *
- * Dropping them here, at the event queue, is deliberate: a forwarding action that disables
- * itself instead would leave the keystroke unconsumed, and the terminal widget writes
- * Escape to the PTY through its own key handling, so the keystroke would arrive anyway by
- * a different route.
+ * Dropping events here, at the event queue, is deliberate: a forwarding action that
+ * disabled itself instead would leave the keystroke unconsumed, and the terminal widget
+ * writes Escape to the PTY through its own key handling, so it would arrive anyway by a
+ * different route.
  *
  * Scoped to a session's [Disposable] rather than the application so the dispatcher cannot
- * outlive a plugin unload. The state is about the physical key, so several instances simply
- * latch and unlatch in agreement.
+ * outlive a plugin unload.
  */
-internal class EscapeKeyGate(parent: Disposable) {
-
-    private var latchedAtNanos: Long? = null
+internal class EscapeKeyGate(
+    private val terminal: JComponent,
+    parent: Disposable,
+    private val latch: EscapeLatch = EscapeLatch(),
+) {
 
     init {
         IdeEventQueue.getInstance().addDispatcher(
@@ -48,21 +52,15 @@ internal class EscapeKeyGate(parent: Disposable) {
     private fun dispatchEscape(event: AWTEvent): Boolean {
         if (event !is KeyEvent || !event.isEscape()) return false
         return when (event.id) {
+            // A popup anywhere in the IDE closes the latch, but only this session's terminal
+            // is ever silenced by it, so onPress runs first for its side effect.
             KeyEvent.KEY_PRESSED ->
-                if (JBPopupFactory.getInstance().isPopupActive) {
-                    // Latch, but let the popup have this press.
-                    latchedAtNanos = System.nanoTime()
-                    false
-                } else {
-                    // No popup left: either a repeat of the press one just consumed, or a
-                    // fresh press meant for the agent.
-                    isLatched()
-                }
+                latch.onPress(JBPopupFactory.getInstance().isPopupActive) && isBoundForTerminal(event)
 
-            KeyEvent.KEY_TYPED -> isLatched()
+            KeyEvent.KEY_TYPED -> latch.isClosed() && isBoundForTerminal(event)
 
             KeyEvent.KEY_RELEASED -> {
-                latchedAtNanos = null
+                latch.onRelease()
                 false
             }
 
@@ -70,27 +68,62 @@ internal class EscapeKeyGate(parent: Disposable) {
         }
     }
 
-    /**
-     * A release delivered to another window would never reach the queue, so the latch also
-     * expires on its own: a briefly swallowed Escape is a far smaller bug than one that
-     * stops interrupting the agent for the rest of the session.
-     */
-    private fun isLatched(): Boolean {
-        val latchedAt = latchedAtNanos ?: return false
-        if (System.nanoTime() - latchedAt > LATCH_EXPIRY_NANOS) {
-            latchedAtNanos = null
-            return false
-        }
-        return true
+    private fun isBoundForTerminal(event: KeyEvent): Boolean {
+        val target = event.component ?: return false
+        return SwingUtilities.isDescendingFrom(target, terminal)
     }
 
     // KEY_TYPED carries no key code, only the character.
     private fun KeyEvent.isEscape(): Boolean =
         keyCode == KeyEvent.VK_ESCAPE || (id == KeyEvent.KEY_TYPED && keyChar == ESCAPE_CHAR)
 
-    companion object {
-        private const val ESCAPE_CHAR = '\u001B'
+    private companion object {
+        const val ESCAPE_CHAR = '\u001B'
+    }
+}
 
-        private val LATCH_EXPIRY_NANOS = TimeUnit.SECONDS.toNanos(5)
+/**
+ * Whether Escape is currently spoken for by a popup rather than by the agent.
+ *
+ * Split out of [EscapeKeyGate] so the press/release/expiry rules can be tested without an
+ * event queue, a popup, or a running IDE.
+ */
+internal class EscapeLatch(private val nowNanos: () -> Long = System::nanoTime) {
+
+    private var closedAtNanos: Long? = null
+
+    /**
+     * @param popupActive whether a popup was open when the press arrived.
+     * @return true if the press should be dropped instead of reaching the agent.
+     */
+    fun onPress(popupActive: Boolean): Boolean {
+        if (popupActive) {
+            // The popup gets this press; the auto-repeats behind it are the problem.
+            closedAtNanos = nowNanos()
+            return false
+        }
+        return isClosed()
+    }
+
+    fun onRelease() {
+        closedAtNanos = null
+    }
+
+    /**
+     * A release delivered to another window never reaches the queue, so the latch also
+     * expires on its own: a briefly swallowed Escape is a far smaller bug than one that
+     * stops interrupting the agent for the rest of the session.
+     */
+    fun isClosed(): Boolean {
+        val closedAt = closedAtNanos ?: return false
+        if (nowNanos() - closedAt > EXPIRY_NANOS) {
+            closedAtNanos = null
+            return false
+        }
+        return true
+    }
+
+    companion object {
+        val EXPIRY_NANOS: Long = TimeUnit.SECONDS.toNanos(5)
     }
 }
