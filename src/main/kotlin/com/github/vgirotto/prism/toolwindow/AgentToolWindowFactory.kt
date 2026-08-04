@@ -10,7 +10,6 @@ import com.github.vgirotto.prism.services.FileSnapshotService
 import com.intellij.icons.AllIcons
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -20,7 +19,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
@@ -234,17 +232,13 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             val settingsProvider = JBTerminalSystemSettingsProviderBase()
             val terminalWidget = JBTerminalWidget(project, settingsProvider, disposable)
 
+            // Escape belongs to whatever popup is open, not to the agent behind it. The
+            // picker takes keyboard focus so the press that closes it never reaches the
+            // terminal; the gate covers the auto-repeat presses that follow a held key,
+            // which arrive once the popup is already gone.
+            EscapeKeyGate(disposable)
+
             val escapeAction = object : DumbAwareAction() {
-                // Escape belongs to whatever popup is open — the new-session picker, the
-                // model chooser — not to the agent behind it. The picker requests focus so
-                // the keystroke never reaches the terminal at all; this is the backstop for
-                // any popup that doesn't, and it keeps Escape from interrupting the agent.
-                override fun update(e: AnActionEvent) {
-                    e.presentation.isEnabled = !JBPopupFactory.getInstance().isPopupActive
-                }
-
-                override fun getActionUpdateThread() = ActionUpdateThread.EDT
-
                 override fun actionPerformed(e: AnActionEvent) {
                     log.debug("Escape forwarded to the PTY")
                     AgentProcessManager.getInstance(project).sendText("\u001B")
