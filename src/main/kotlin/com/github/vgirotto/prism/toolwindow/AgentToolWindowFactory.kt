@@ -396,6 +396,9 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             val content = toolWindow.contentManager.getContent(i)
             if (content?.displayName == PrismBundle.message("toolwindow.tab.history")) {
                 toolWindow.contentManager.setSelectedContent(content)
+                // History is scoped to the active session's CLI, which may have changed
+                // to another agent since this tab was built.
+                (content.component as? HistoryPanel)?.loadHistory()
                 return
             }
         }
