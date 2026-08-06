@@ -78,7 +78,13 @@ class NewSessionPopupAction(
         val previousFocusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
         val popup = JBPopupFactory.getInstance().createPopupChooserBuilder(ordered)
             .setTitle("New Agent Session")
-            .setRenderer(SimpleListCellRenderer.create<AgentCli>("") { it.displayName() })
+            // The (nullValue, Function) overload is scheduled for removal; the customizer
+            // form has to blank the label itself for a null value.
+            .setRenderer(
+                SimpleListCellRenderer.create<AgentCli> { label, value, _ ->
+                    label.text = value?.displayName().orEmpty()
+                }
+            )
             .setRequestFocus(true)
             .setItemChosenCallback { createSessionTab(it) }
             .createPopup()

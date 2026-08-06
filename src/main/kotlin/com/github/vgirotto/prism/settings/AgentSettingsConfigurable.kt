@@ -43,7 +43,11 @@ class AgentSettingsConfigurable : BoundConfigurable(PrismBundle.message("setting
                 // mutating the persistent setting the moment the selection changes.
                 comboBox(
                     AgentCli.entries,
-                    SimpleListCellRenderer.create("") { labels.getValue(it) },
+                    // The (nullValue, Function) overload is scheduled for removal; the
+                    // customizer form has to blank the label itself for a null value.
+                    SimpleListCellRenderer.create<AgentCli> { label, value, _ ->
+                        label.text = value?.let { labels.getValue(it) }.orEmpty()
+                    },
                 )
                     .bindItem({ settings.defaultCli }, { settings.defaultCli = it ?: AgentCli.DEFAULT })
                     .comment(PrismBundle.message("settings.default.cli.comment"))
