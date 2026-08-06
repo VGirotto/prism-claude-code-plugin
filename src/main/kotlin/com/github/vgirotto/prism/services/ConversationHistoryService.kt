@@ -22,14 +22,19 @@ class ConversationHistoryService(private val project: Project) {
         AgentCli.CODEX -> CodexHistoryReader(project.basePath)
     }
 
-    fun listConversations(cli: AgentCli = AgentCli.CLAUDE): List<ConversationSummary> =
-        reader(cli).listConversations()
+    fun listConversations(
+        cli: AgentCli = AgentCli.CLAUDE,
+        limit: Int = Int.MAX_VALUE,
+    ): List<ConversationSummary> = reader(cli).listConversations(limit)
 
     fun loadConversation(sessionId: String, cli: AgentCli = AgentCli.CLAUDE): List<ConversationMessage> =
         reader(cli).loadConversation(sessionId)
 
-    fun searchConversations(query: String, cli: AgentCli = AgentCli.CLAUDE): List<ConversationSummary> =
-        reader(cli).searchConversations(query)
+    fun searchConversations(
+        query: String,
+        cli: AgentCli = AgentCli.CLAUDE,
+        limit: Int = Int.MAX_VALUE,
+    ): List<ConversationSummary> = reader(cli).searchConversations(query, limit)
 
     /** Back-compat: returns the Claude project history directory. */
     fun getProjectHistoryDir(): File? =

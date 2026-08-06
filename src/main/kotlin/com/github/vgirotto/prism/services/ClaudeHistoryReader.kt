@@ -45,7 +45,7 @@ class ClaudeHistoryReader(private val projectBasePath: String?) : HistoryReader 
             ?.firstOrNull { normalize(it.name) == normalizedPath }
     }
 
-    override fun listConversations(): List<ConversationSummary> {
+    override fun listConversations(limit: Int): List<ConversationSummary> {
         val dir = getProjectHistoryDir() ?: return emptyList()
         val jsonlFiles = dir.listFiles { f -> f.isFile && f.name.endsWith(".jsonl") } ?: return emptyList()
         return jsonlFiles.mapNotNull { file ->
@@ -55,7 +55,7 @@ class ClaudeHistoryReader(private val projectBasePath: String?) : HistoryReader 
                 log.debug("Failed to parse session file: ${file.name}", e)
                 null
             }
-        }.sortedByDescending { it.lastTime }
+        }.sortedByDescending { it.lastTime }.take(limit)
     }
 
     override fun loadConversation(sessionId: String): List<ConversationMessage> {
@@ -89,8 +89,8 @@ class ClaudeHistoryReader(private val projectBasePath: String?) : HistoryReader 
         return messages
     }
 
-    override fun searchConversations(query: String): List<ConversationSummary> {
-        if (query.isBlank()) return listConversations()
+    override fun searchConversations(query: String, limit: Int): List<ConversationSummary> {
+        if (query.isBlank()) return listConversations(limit)
         val lowerQuery = query.lowercase()
 
         val dir = getProjectHistoryDir() ?: return emptyList()
@@ -102,7 +102,7 @@ class ClaudeHistoryReader(private val projectBasePath: String?) : HistoryReader 
             } catch (_: Exception) {
                 null
             }
-        }.sortedByDescending { it.lastTime }
+        }.sortedByDescending { it.lastTime }.take(limit)
     }
 
     private fun parseSummary(file: File): ConversationSummary? {
