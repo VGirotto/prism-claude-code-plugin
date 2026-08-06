@@ -9,7 +9,23 @@ import java.nio.file.Path
 class CliBinaryLocatorTest {
 
     @Test
-    fun `locate returns first existing candidate path`(@TempDir tmp: Path) {
+    fun `locate prefers PATH over a candidate path when both resolve`(@TempDir tmp: Path) {
+        // The user's PATH is their declared intent — a version-manager shim lives there,
+        // while a stale global install can linger in a candidate location forever.
+        val stale = executable(Files.createDirectory(tmp.resolve("stale")), "fake-cli")
+        val onPathDir = Files.createDirectory(tmp.resolve("bin"))
+        val current = executable(onPathDir, "fake-cli")
+
+        val locator = locator(
+            binaryName = "fake-cli",
+            candidatePaths = listOf(stale.toString()),
+            pathEntries = listOf(onPathDir.toString()),
+        )
+        assertEquals(current.toString(), locator.locate())
+    }
+
+    @Test
+    fun `locate falls back to a candidate path when the binary is not on PATH`(@TempDir tmp: Path) {
         val fake = executable(tmp, "fake-cli")
 
         val locator = locator(
@@ -35,7 +51,7 @@ class CliBinaryLocatorTest {
     }
 
     @Test
-    fun `locate falls back to a PATH directory when no candidate matches`(@TempDir tmp: Path) {
+    fun `locate finds the binary on PATH when no candidate matches`(@TempDir tmp: Path) {
         val onPath = Files.createDirectory(tmp.resolve("bin"))
         val fake = executable(onPath, "fake-cli")
 
