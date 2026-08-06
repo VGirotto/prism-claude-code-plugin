@@ -31,7 +31,6 @@ jobs:
 
       - name: Check plugin compatibility
         run: ./gradlew runPluginVerifier
-        continue-on-error: true
 
       - name: Upload verification reports
         if: always()
