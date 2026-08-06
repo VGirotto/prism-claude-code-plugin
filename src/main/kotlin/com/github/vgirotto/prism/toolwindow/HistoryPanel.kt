@@ -51,6 +51,24 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
     private val searchField = SearchTextField()
     private val statusLabel = JBLabel("")
 
+    /**
+     * How many conversations are currently listed. Codex keeps every project's sessions in
+     * one date-ordered tree, so an old install has plenty to walk; the panel asks for a
+     * page and grows it on demand instead of building the whole list to show the top of it.
+     */
+    private var pageLimit = PAGE_SIZE
+
+    /** Empty means "list everything", non-empty means the current search. */
+    private var currentQuery = ""
+
+    private val loadMoreButton = JButton(PrismBundle.message("history.load.more")).apply {
+        isVisible = false
+        addActionListener {
+            pageLimit += PAGE_SIZE
+            reload()
+        }
+    }
+
     // Detail view
     private val detailContent = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -59,6 +77,9 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     // Theme colors (auto-adapt to Darcula/Light)
     companion object {
+        /** Conversations fetched per page, and how many "Load more" adds each time. */
+        private const val PAGE_SIZE = 50
+
         private val DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
         private val TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss")
         private val LIST_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM HH:mm")
@@ -124,6 +145,13 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
 
         listPanel.add(topPanel, BorderLayout.NORTH)
         listPanel.add(JBScrollPane(conversationList), BorderLayout.CENTER)
+        listPanel.add(
+            JPanel(BorderLayout()).apply {
+                border = JBUI.Borders.empty(4)
+                add(loadMoreButton, BorderLayout.CENTER)
+            },
+            BorderLayout.SOUTH,
+        )
         cardPanel.add(listPanel, "list")
     }
 
@@ -164,25 +192,34 @@ class HistoryPanel(private val project: Project) : JPanel(BorderLayout()) {
     }
 
     fun loadHistory() {
-        val cli = activeCli()
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val conversations = historyService.listConversations(cli)
-            ApplicationManager.getApplication().invokeLater {
-                listModel.clear()
-                for (conv in conversations) listModel.addElement(conv)
-                statusLabel.text = PrismBundle.message("history.conversations", conversations.size)
-            }
-        }
+        currentQuery = ""
+        pageLimit = PAGE_SIZE
+        reload()
     }
 
     private fun performSearch(query: String) {
+        currentQuery = query
+        pageLimit = PAGE_SIZE
+        reload()
+    }
+
+    private fun reload() {
         val cli = activeCli()
+        val query = currentQuery
+        val limit = pageLimit
         ApplicationManager.getApplication().executeOnPooledThread {
-            val results = historyService.searchConversations(query, cli)
+            val results =
+                if (query.isBlank()) historyService.listConversations(cli, limit)
+                else historyService.searchConversations(query, cli, limit)
             ApplicationManager.getApplication().invokeLater {
                 listModel.clear()
                 for (conv in results) listModel.addElement(conv)
-                statusLabel.text = PrismBundle.message("history.results", results.size)
+                statusLabel.text =
+                    if (query.isBlank()) PrismBundle.message("history.conversations", results.size)
+                    else PrismBundle.message("history.results", results.size)
+                // A full page is the only hint that more may be behind it — the readers
+                // stop counting once they have enough.
+                loadMoreButton.isVisible = results.size >= limit
             }
         }
     }
