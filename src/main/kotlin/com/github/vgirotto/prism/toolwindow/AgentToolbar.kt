@@ -32,6 +32,19 @@ internal fun activeAgentCli(project: Project): AgentCli =
     AgentProcessManager.getInstance(project).activeSession?.cli
         ?: AgentSettingsState.getInstance().defaultCli
 
+/**
+ * Visibility follows the active CLI; enablement additionally drops while a staged
+ * keystroke sequence is still going out, because a second click would interleave with a
+ * picker that is only half-driven. Enablement is set apart from visibility on purpose —
+ * a button that greys out reads as "busy", one that vanishes reads as broken.
+ */
+private fun AnActionEvent.gateToolbarItem(project: Project, item: ToolbarItem) {
+    val visible = isToolbarItemAvailable(activeAgentCli(project), item)
+    presentation.isVisible = visible
+    presentation.isEnabled = visible &&
+        AgentProcessManager.getInstance(project).activeSession?.sequenceInFlight != true
+}
+
 class AgentToolbar(private val project: Project) : JPanel(BorderLayout()) {
 
     init {
@@ -78,10 +91,15 @@ private class TemplatesAction(private val project: Project) : AnAction(
         val templateService = PromptTemplateService.getInstance()
         val templates = templateService.getTemplates()
 
+        // Capture now — by the time the user picks a template, focus has shifted to the
+        // popup and selectedEditor returns null, making {file} impossible to resolve.
+        val capturedFilePath = ContextProvider.getInstance(project).getActiveFile()
+            ?.let { ContextProvider.getInstance(project).relativePath(it) }
+
         val group = DefaultActionGroup().apply {
             for (template in templates) {
                 add(object : AnAction(template.name, template.prompt, null), DumbAware {
-                    override fun actionPerformed(e: AnActionEvent) = executeTemplate(template)
+                    override fun actionPerformed(e: AnActionEvent) = executeTemplate(template, capturedFilePath)
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
             }
@@ -106,14 +124,15 @@ private class TemplatesAction(private val project: Project) : AnAction(
         popupMenu.component.show(anchor, 0, anchor.height)
     }
 
-    private fun executeTemplate(template: PromptTemplate) {
+    private fun executeTemplate(template: PromptTemplate, capturedFilePath: String? = null) {
         val contextProvider = ContextProvider.getInstance(project)
         val selection = contextProvider.getSelectedText()
-        val filePath = contextProvider.getActiveFile()?.let { contextProvider.relativePath(it) }
         val resolved = PromptTemplateService.getInstance().resolveTemplate(
-            template, selection = selection, filePath = filePath,
+            template, selection = selection, filePath = capturedFilePath,
         )
-        AgentProcessManager.getInstance(project).sendText("$resolved\n")
+        // No trailing \n: keeps the resolved prompt in the composer without submitting,
+        // matching SendSelectionAction and the user's expectation for both CLIs.
+        AgentProcessManager.getInstance(project).sendText(resolved)
         ToolWindowManager.getInstance(project).getToolWindow("Prism")?.activate(null)
     }
 
@@ -245,9 +264,7 @@ private class ModelAction(private val project: Project) : AnAction(
         popup.component.show(component, 0, component.height)
     }
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.MODEL)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.MODEL)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
@@ -315,9 +332,7 @@ private class EffortAction(private val project: Project) : AnAction(
         popup.component.show(component, 0, component.height)
     }
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.EFFORT)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.EFFORT)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
@@ -353,9 +368,7 @@ private class CostAction(private val project: Project) : AnAction(
         popup.component.show(component, 0, component.height)
     }
 
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.COST)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.COST)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
@@ -365,9 +378,7 @@ private class ResumeAction(private val project: Project) : AnAction(
     override fun actionPerformed(e: AnActionEvent) {
         AgentProcessManager.getInstance(project).sendText("/resume\r")
     }
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.RESUME)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.RESUME)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
@@ -387,9 +398,7 @@ private class CompactAction(private val project: Project) : AnAction(
             AgentProcessManager.getInstance(project).sendText("/compact\r")
         }
     }
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.COMPACT)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.COMPACT)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
@@ -409,9 +418,7 @@ private class ClearAction(private val project: Project) : AnAction(
             AgentProcessManager.getInstance(project).sendText("/clear\r")
         }
     }
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabledAndVisible = isToolbarItemAvailable(activeAgentCli(project), ToolbarItem.CLEAR)
-    }
+    override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.CLEAR)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
