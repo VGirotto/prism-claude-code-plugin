@@ -139,6 +139,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
             onUserInput = { onUserInput(session) },
             onOutputActivity = { onOutputActivity(session) },
             onStartupParsed = { model, effort -> onStartupParsed(session, model, effort) },
+            writeQueue = { write -> submitWrite(session, write = write) },
         )
 
         session.process = process

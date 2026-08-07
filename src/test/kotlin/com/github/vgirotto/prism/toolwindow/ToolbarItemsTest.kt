@@ -1,6 +1,7 @@
 package com.github.vgirotto.prism.toolwindow
 
 import com.github.vgirotto.prism.model.AgentCli
+import com.github.vgirotto.prism.model.AgentSession
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -64,6 +65,27 @@ class ToolbarItemsTest {
                 assertEquals(item in expected, isToolbarItemAvailable(cli, item))
             }
         }
+    }
+
+    @Test
+    fun `toolbar input is refused while a sequence is in flight`() {
+        val session = AgentSession(name = "test")
+        assertTrue(acceptsToolbarInput(session))
+
+        session.beginSequence()
+        // The click gate has to hold on its own: the greyed-out presentation only
+        // refreshes on IntelliJ's action timer, well after a double-click has landed.
+        assertFalse(acceptsToolbarInput(session))
+
+        session.endSequence()
+        assertTrue(acceptsToolbarInput(session))
+
+        session.dispose()
+    }
+
+    @Test
+    fun `toolbar input is accepted when there is no session to gate on`() {
+        assertTrue(acceptsToolbarInput(null))
     }
 
     @Test

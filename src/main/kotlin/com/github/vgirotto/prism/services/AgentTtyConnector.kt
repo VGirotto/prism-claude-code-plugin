@@ -21,6 +21,7 @@ class AgentTtyConnector(
     private val onOutputActivity: (() -> Unit)? = null,
     private val onStartupParsed: ((model: String, effort: String) -> Unit)? = null,
     private val bannerParser: BannerParser = ClaudeBannerParser,
+    private val writeQueue: ((() -> Unit) -> Unit)? = null,
 ) : ProcessTtyConnector(process, charset) {
 
     constructor(
@@ -30,6 +31,7 @@ class AgentTtyConnector(
         onUserInput: (() -> Unit)? = null,
         onOutputActivity: (() -> Unit)? = null,
         onStartupParsed: ((model: String, effort: String) -> Unit)? = null,
+        writeQueue: ((() -> Unit) -> Unit)? = null,
     ) : this(
         process = process,
         charset = charset,
@@ -37,6 +39,7 @@ class AgentTtyConnector(
         onOutputActivity = onOutputActivity,
         onStartupParsed = onStartupParsed,
         bannerParser = BannerParser.forCli(cli),
+        writeQueue = writeQueue,
     )
 
     @Volatile
@@ -63,15 +66,31 @@ class AgentTtyConnector(
         if (bytes.any { it == '\r'.code.toByte() || it == '\n'.code.toByte() }) {
             onUserInput?.invoke()
         }
-        super.write(bytes)
+        queued { writeDirect(bytes) }
     }
 
     override fun write(string: String) {
         if (string.contains('\r') || string.contains('\n')) {
             onUserInput?.invoke()
         }
-        super.write(string)
+        queued { writeDirect(string) }
     }
+
+    /**
+     * Hands [write] to the session's PTY write queue when there is one, so a typed
+     * character cannot land between the body and the Enter of a staged Codex sequence.
+     * Keystrokes typed during a sequence are held until it finishes instead — a prompt
+     * that submits a beat late beats one that submits a keystroke early.
+     */
+    private fun queued(write: () -> Unit) {
+        val queue = writeQueue
+        if (queue == null) write() else queue(write)
+    }
+
+    // super calls cannot be made from inside a lambda, so the queued write goes through
+    // these instead.
+    private fun writeDirect(bytes: ByteArray) = super.write(bytes)
+    private fun writeDirect(string: String) = super.write(string)
 
     override fun read(buf: CharArray, offset: Int, length: Int): Int {
         val bytesRead = super.read(buf, offset, length)

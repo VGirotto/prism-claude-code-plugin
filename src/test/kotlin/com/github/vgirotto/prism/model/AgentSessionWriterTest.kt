@@ -45,6 +45,36 @@ class AgentSessionWriterTest {
     }
 
     @Test
+    fun `a keystroke typed during a sequence lands after it, never inside it`() {
+        val session = AgentSession(name = "test")
+        val out = StringBuilder()
+        val bodyWritten = CountDownLatch(1)
+        val done = CountDownLatch(2)
+
+        // The staged submit: body, a gap, then the Enter that commits it.
+        session.writer.execute {
+            synchronized(out) { out.append("/resume") }
+            bodyWritten.countDown()
+            Thread.sleep(50)
+            synchronized(out) { out.append("\r") }
+            done.countDown()
+        }
+
+        // The user types into the terminal inside that gap. Routing the connector's
+        // write through the same queue is what keeps it out of the middle.
+        assertTrue(bodyWritten.await(5, TimeUnit.SECONDS))
+        session.writer.execute {
+            synchronized(out) { out.append("x") }
+            done.countDown()
+        }
+
+        assertTrue(done.await(5, TimeUnit.SECONDS), "writes did not finish in time")
+        assertEquals("/resume\rx", out.toString())
+
+        session.dispose()
+    }
+
+    @Test
     fun `sequenceInFlight stays true until every queued sequence finishes`() {
         val session = AgentSession(name = "test")
         assertFalse(session.sequenceInFlight)

@@ -2,6 +2,7 @@ package com.github.vgirotto.prism.toolwindow
 
 import com.github.vgirotto.prism.i18n.PrismBundle
 import com.github.vgirotto.prism.model.AgentCli
+import com.github.vgirotto.prism.model.AgentSession
 import com.github.vgirotto.prism.model.PromptTemplate
 import com.github.vgirotto.prism.services.AgentProcessManager
 import com.github.vgirotto.prism.services.AgentSettingsState
@@ -33,16 +34,40 @@ internal fun activeAgentCli(project: Project): AgentCli =
         ?: AgentSettingsState.getInstance().defaultCli
 
 /**
+ * Whether a toolbar-initiated write may go out to [session] right now.
+ *
+ * False while a staged keystroke sequence is still being delivered: the next write would
+ * queue up behind it and land inside the interactive screen that sequence just opened, so
+ * two Resume clicks would submit `/resume` twice instead of once.
+ */
+internal fun acceptsToolbarInput(session: AgentSession?): Boolean = session?.sequenceInFlight != true
+
+/**
  * Visibility follows the active CLI; enablement additionally drops while a staged
- * keystroke sequence is still going out, because a second click would interleave with a
- * picker that is only half-driven. Enablement is set apart from visibility on purpose —
- * a button that greys out reads as "busy", one that vanishes reads as broken.
+ * keystroke sequence is still going out. Enablement is set apart from visibility on
+ * purpose — a button that greys out reads as "busy", one that vanishes reads as broken.
  */
 private fun AnActionEvent.gateToolbarItem(project: Project, item: ToolbarItem) {
     val visible = isToolbarItemAvailable(activeAgentCli(project), item)
     presentation.isVisible = visible
-    presentation.isEnabled = visible &&
-        AgentProcessManager.getInstance(project).activeSession?.sequenceInFlight != true
+    presentation.isEnabled =
+        visible && acceptsToolbarInput(AgentProcessManager.getInstance(project).activeSession)
+}
+
+/**
+ * Runs [send] only if the active session is not mid-sequence, making the extra click a
+ * silent no-op.
+ *
+ * The greyed-out presentation above cannot carry this on its own: `update()` runs on
+ * IntelliJ's action timer, so the button stays live for up to half a second after the
+ * first click and a double-click slips through before it repaints. Editor-initiated
+ * prompts deliberately keep using plain `sendText` — those queue rather than drop,
+ * because losing a message the user typed is worse than delivering it a moment late.
+ */
+private fun sendIfAccepted(project: Project, send: AgentProcessManager.() -> Unit) {
+    val manager = AgentProcessManager.getInstance(project)
+    if (!acceptsToolbarInput(manager.activeSession)) return
+    manager.send()
 }
 
 class AgentToolbar(private val project: Project) : JPanel(BorderLayout()) {
@@ -230,7 +255,7 @@ private class ModelAction(private val project: Project) : AnAction(
         if (activeAgentCli(project) == AgentCli.CODEX) {
             // No safe fixed digit->model mapping (see CodexModelPicker): open the
             // native picker so the user selects from the account's live model list.
-            AgentProcessManager.getInstance(project).sendSequence(CodexModelPicker.OPEN_MODEL)
+            sendIfAccepted(project) { sendSequence(CodexModelPicker.OPEN_MODEL) }
             return
         }
         val component = e.inputEvent?.component as? JComponent ?: return
@@ -246,7 +271,7 @@ private class ModelAction(private val project: Project) : AnAction(
             )) {
                 add(object : AnAction(model.first, model.second, null), DumbAware {
                     override fun actionPerformed(e: AnActionEvent) {
-                        AgentProcessManager.getInstance(project).sendText("/model ${model.first}\r")
+                        sendIfAccepted(project) { sendText("/model ${model.first}\r") }
                     }
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
@@ -254,7 +279,7 @@ private class ModelAction(private val project: Project) : AnAction(
             addSeparator()
             add(object : AnAction(PrismBundle.message("toolbar.model.picker"), PrismBundle.message("toolbar.model.picker.desc"), null), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
-                    AgentProcessManager.getInstance(project).sendText("/model\r")
+                    sendIfAccepted(project) { sendText("/model\r") }
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
             })
@@ -289,7 +314,7 @@ private class EffortAction(private val project: Project) : AnAction(
             )) {
                 add(object : AnAction(level.first, level.second, null), DumbAware {
                     override fun actionPerformed(e: AnActionEvent) {
-                        AgentProcessManager.getInstance(project).sendText("/effort ${level.first}\r")
+                        sendIfAccepted(project) { sendText("/effort ${level.first}\r") }
                     }
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
@@ -297,7 +322,7 @@ private class EffortAction(private val project: Project) : AnAction(
             addSeparator()
             add(object : AnAction(PrismBundle.message("toolbar.effort.picker"), PrismBundle.message("toolbar.effort.picker.desc"), null), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
-                    AgentProcessManager.getInstance(project).sendText("/effort\r")
+                    sendIfAccepted(project) { sendText("/effort\r") }
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
             })
@@ -313,6 +338,7 @@ private class EffortAction(private val project: Project) : AnAction(
             for ((key, digit, labelKey) in CodexModelPicker.EFFORTS) {
                 add(object : AnAction(key, PrismBundle.message(labelKey), null), DumbAware {
                     override fun actionPerformed(e: AnActionEvent) {
+                        if (!acceptsToolbarInput(mgr.activeSession)) return
                         mgr.sendSequence(CodexModelPicker.selectEffort(digit))
                         mgr.setSessionEffort(key)
                     }
@@ -322,7 +348,7 @@ private class EffortAction(private val project: Project) : AnAction(
             addSeparator()
             add(object : AnAction(PrismBundle.message("toolbar.effort.picker"), PrismBundle.message("toolbar.effort.picker.desc"), null), DumbAware {
                 override fun actionPerformed(e: AnActionEvent) {
-                    mgr.sendSequence(CodexModelPicker.OPEN_EFFORT)
+                    sendIfAccepted(project) { sendSequence(CodexModelPicker.OPEN_EFFORT) }
                 }
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
             })
@@ -344,7 +370,7 @@ private class CostAction(private val project: Project) : AnAction(
             val component = e.inputEvent?.component as? JComponent ?: return
             showCodexUsageMenu(component)
         } else {
-            AgentProcessManager.getInstance(project).sendText("/cost\r")
+            sendIfAccepted(project) { sendText("/cost\r") }
         }
     }
 
@@ -357,7 +383,7 @@ private class CostAction(private val project: Project) : AnAction(
             for ((view, labelKey) in CodexUsage.VIEWS) {
                 add(object : AnAction(view, PrismBundle.message(labelKey), null), DumbAware {
                     override fun actionPerformed(e: AnActionEvent) {
-                        mgr.sendText(CodexUsage.command(view))
+                        sendIfAccepted(project) { sendText(CodexUsage.command(view)) }
                     }
                     override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 })
@@ -376,7 +402,7 @@ private class ResumeAction(private val project: Project) : AnAction(
     PrismBundle.message("toolbar.resume"), PrismBundle.message("toolbar.resume.desc"), AllIcons.Actions.Resume
 ), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
-        AgentProcessManager.getInstance(project).sendText("/resume\r")
+        sendIfAccepted(project) { sendText("/resume\r") }
     }
     override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.RESUME)
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
@@ -395,7 +421,7 @@ private class CompactAction(private val project: Project) : AnAction(
             AllIcons.Actions.Collapseall
         )
         if (result == Messages.OK) {
-            AgentProcessManager.getInstance(project).sendText("/compact\r")
+            sendIfAccepted(project) { sendText("/compact\r") }
         }
     }
     override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.COMPACT)
@@ -415,7 +441,7 @@ private class ClearAction(private val project: Project) : AnAction(
             AllIcons.Actions.GC
         )
         if (result == Messages.OK) {
-            AgentProcessManager.getInstance(project).sendText("/clear\r")
+            sendIfAccepted(project) { sendText("/clear\r") }
         }
     }
     override fun update(e: AnActionEvent) = e.gateToolbarItem(project, ToolbarItem.CLEAR)
