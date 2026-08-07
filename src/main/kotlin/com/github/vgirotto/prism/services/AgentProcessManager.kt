@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.RejectedExecutionException
 
 @Service(Service.Level.PROJECT)
 class AgentProcessManager(private val project: Project) : Disposable {
@@ -112,7 +113,8 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
         val env = HashMap(System.getenv())
         env["TERM"] = "xterm-256color"
-        env["CLAUDE_CODE_WRAPPER"] = "intellij"
+        // Claude Code reads this to know it is embedded; it means nothing to other CLIs.
+        if (cli == AgentCli.CLAUDE) env["CLAUDE_CODE_WRAPPER"] = "intellij"
 
         val workDir = project.basePath ?: System.getProperty("user.home")
 
@@ -368,11 +370,35 @@ class AgentProcessManager(private val project: Project) : Disposable {
             }
         }
 
-        try {
+        // Queued rather than written inline so it can neither overtake nor be overtaken by
+        // a staged Codex sequence already sitting in this session's write queue.
+        submitWrite(session) {
             process.outputStream.write(text.toByteArray(StandardCharsets.UTF_8))
             process.outputStream.flush()
-        } catch (e: Exception) {
-            log.warn("Failed to send text [${session.id}]", e)
+        }
+    }
+
+    /**
+     * Runs [write] on the session's single writer thread, so every write to that PTY is
+     * ordered against every other one and none of them lands on the EDT.
+     */
+    private fun submitWrite(session: AgentSession, onDone: (() -> Unit)? = null, write: () -> Unit) {
+        try {
+            session.writer.execute {
+                try {
+                    write()
+                } catch (_: InterruptedException) {
+                    // Session disposed mid-sequence; the remaining keystrokes are moot.
+                    Thread.currentThread().interrupt()
+                } catch (e: Exception) {
+                    log.warn("Failed to write to PTY [${session.id}]", e)
+                } finally {
+                    onDone?.invoke()
+                }
+            }
+        } catch (_: RejectedExecutionException) {
+            log.debug("Write dropped, session writer already shut down [${session.id}]")
+            onDone?.invoke()
         }
     }
 
@@ -406,19 +432,16 @@ class AgentProcessManager(private val project: Project) : Disposable {
         // the idle monitor fires (and the UI auto-refreshes) once the output settles.
         session.idleFiredForCurrentInteraction = false
         session.outputActive = false
+        session.beginSequence()
 
-        Thread {
-            try {
-                for ((index, chunk) in chunks.withIndex()) {
-                    if (index > 0) Thread.sleep(stepDelayMs)
-                    if (!process.isAlive) break
-                    process.outputStream.write(chunk.toByteArray(StandardCharsets.UTF_8))
-                    process.outputStream.flush()
-                }
-            } catch (e: Exception) {
-                log.warn("Failed to send sequence [${session.id}]", e)
+        submitWrite(session, onDone = { session.endSequence() }) {
+            for ((index, chunk) in chunks.withIndex()) {
+                if (index > 0) Thread.sleep(stepDelayMs)
+                if (!process.isAlive) break
+                process.outputStream.write(chunk.toByteArray(StandardCharsets.UTF_8))
+                process.outputStream.flush()
             }
-        }.start()
+        }
     }
 
     /** Optimistically records the active session's model and notifies the UI. */

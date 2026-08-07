@@ -5,9 +5,14 @@ import com.intellij.util.EnvironmentUtil
 import java.io.File
 
 /**
- * Locates a CLI executable by checking a list of candidate paths, then scanning the
- * PATH the user's login shell exports. Shared between the per-CLI validation services
- * so lookup behavior stays uniform across agents.
+ * Locates a CLI executable by scanning the PATH the user's login shell exports, falling
+ * back to a list of candidate install locations. Shared between the per-CLI validation
+ * services so lookup behavior stays uniform across agents.
+ *
+ * PATH is consulted first because it is the user's declared intent and is what a version
+ * manager (nvm, volta, mise, asdf) puts its shim on. The candidate paths are a safety net
+ * for the case PATH cannot cover, so letting them win would launch a stale binary from an
+ * old global install while the terminal keeps resolving the shim.
  *
  * PATH comes from [EnvironmentUtil] rather than [System.getenv] because a GUI-launched
  * IDE inherits the desktop session's environment — on macOS, launchd's
@@ -26,8 +31,21 @@ class CliBinaryLocator(
 
     private val log = Logger.getInstance(CliBinaryLocator::class.java)
 
-    /** Full path to the binary, or null if it is not found in any candidate or on PATH. */
+    /** Full path to the binary, or null if it is not found on PATH or in any candidate. */
     fun locate(): String? {
+        val onPath = onPath(binaryName)
+        val candidate = firstExecutableCandidate()
+        if (onPath == null) return candidate
+
+        // Worth a log line: the two disagreeing means the session and the user's terminal
+        // would run different binaries if this ever picked the candidate.
+        if (candidate != null && candidate != onPath) {
+            log.info("$binaryName resolved to $onPath on PATH; a different one exists at $candidate")
+        }
+        return onPath
+    }
+
+    private fun firstExecutableCandidate(): String? {
         for (path in candidatePaths) {
             val expanded = expandHome(path)
             if (isExecutable(expanded)) {
@@ -35,7 +53,7 @@ class CliBinaryLocator(
                 return expanded
             }
         }
-        return onPath(binaryName)
+        return null
     }
 
     /** True if [locate] would return a non-null path. */
@@ -79,7 +97,7 @@ class CliBinaryLocator(
                 return candidate
             }
         }
-        log.debug("No $name in candidate paths or on PATH")
+        log.debug("No $name on PATH")
         return null
     }
 

@@ -5,7 +5,10 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.util.Timer
 import java.util.UUID
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Represents a single agent session with its own process, state, and metadata.
@@ -35,6 +38,36 @@ class AgentSession(
     /** Guards the one-shot "first output" startup timing log. */
     @Volatile var firstOutputLogged: Boolean = false
 
+    /**
+     * Serializes every write to this session's PTY.
+     *
+     * Codex needs a submitting input delivered as two keystrokes — the body, then the
+     * Enter — spaced far enough apart not to look like a paste. Two writers racing inside
+     * that gap interleave: two Resume clicks put "/resumeresume" in the composer. One
+     * thread per session keeps writes ordered without ever blocking the EDT.
+     */
+    val writer: ExecutorService = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "AgentPtyWriter-$id").apply { isDaemon = true }
+    }
+
+    /**
+     * Counted rather than a flag: a second sequence can be queued behind the first, and a
+     * plain boolean would be cleared by whichever finishes first, re-enabling the toolbar
+     * while keystrokes are still going out.
+     */
+    private val pendingSequences = AtomicInteger(0)
+
+    /** True while any staged keystroke sequence is still being delivered to the PTY. */
+    val sequenceInFlight: Boolean get() = pendingSequences.get() > 0
+
+    fun beginSequence() {
+        pendingSequences.incrementAndGet()
+    }
+
+    fun endSequence() {
+        pendingSequences.updateAndGet { if (it > 0) it - 1 else 0 }
+    }
+
     enum class SessionState { STOPPED, STARTING, IDLE, WORKING }
 
     val isAlive: Boolean get() = process?.isAlive == true
@@ -45,6 +78,10 @@ class AgentSession(
         else TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - launchStartedAtNanos)
 
     override fun dispose() {
+        // Interrupts a sequence mid-flight: its remaining keystrokes are meant for a PTY
+        // that is about to be torn down.
+        try { writer.shutdownNow() } catch (_: Exception) {}
+        pendingSequences.set(0)
         idleTimer?.cancel()
         idleTimer = null
         healthTimer?.cancel()
