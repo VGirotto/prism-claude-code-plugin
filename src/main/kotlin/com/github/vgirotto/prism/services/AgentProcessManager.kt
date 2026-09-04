@@ -452,7 +452,12 @@ class AgentProcessManager(private val project: Project) : Disposable {
 
     /** Optimistically records the active session's effort and notifies the UI. */
     fun setSessionEffort(effort: String) {
-        val session = activeSession ?: return
+        setSessionEffort(effort, activeSessionId)
+    }
+
+    /** Optimistically records a specific session's effort and notifies the UI. */
+    fun setSessionEffort(effort: String, sessionId: String?) {
+        val session = sessionId?.let { sessions[it] } ?: return
         session.effort = effort
         notifyStateListeners(session)
     }
@@ -470,8 +475,7 @@ class AgentProcessManager(private val project: Project) : Disposable {
         log.info("Session destroyed: ${session.name} [${session.id}]")
 
         if (activeSessionId == sessionId) {
-            activeSessionId = sessions.keys.firstOrNull()
-            activeSession?.let { notifyStateListeners(it) }
+            activeSessionId = null
         }
     }
 
