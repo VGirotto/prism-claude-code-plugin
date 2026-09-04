@@ -48,3 +48,17 @@
 - Panel-local terminal and toolbar commands must use a bound session ID; the
   global active session is only the last-focused target for editor actions.
 - Moving Content with `dispose=false` is compatible with disposer-only session teardown.
+
+## Global Diff Follow-up
+
+- Added a serialized global interaction coordinator.
+- Sequential sessions retain separate numbered entries and Chat labels.
+- Overlapping sessions share one baseline and produce one Multiple chats entry.
+- Opening additional sessions no longer resets an active project interaction.
+- Startup output, tab selection, toolbar Refresh, and Show Agent Changes no longer
+  append numbered history entries.
+- Closing an active session queues completion without blocking the EDT.
+- Unexpected process death also releases its interaction participation, preventing
+  a concurrent group from remaining open indefinitely.
+- Automated validation: 179 tests passed on builds 243 and 262; baseline
+  `buildPlugin` passed and `git diff --check` passed.

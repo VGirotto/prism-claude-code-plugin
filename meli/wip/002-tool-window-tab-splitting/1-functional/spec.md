@@ -69,6 +69,21 @@ agents must repeatedly switch tabs and cannot monitor both conversations.
 **Priority**: High
 **Complexity**: M
 
+### US-6: Keep one reliable project-wide diff timeline
+
+**As a** Prism user running multiple sessions
+**I want** sequential work attributed to its chat and overlapping work grouped once
+**So that** interaction numbers remain unique without duplicated or hidden changes.
+
+**Acceptance Criteria**:
+- [ ] Sequential chats create consecutive Diff entries attributed to each chat.
+- [ ] Overlapping chats create one Diff entry labeled Multiple chats.
+- [ ] Opening another session never resets an interaction already in progress.
+- [ ] Startup output, tab selection, and Refresh never create a numbered interaction.
+
+**Priority**: High
+**Complexity**: L
+
 ### US-3: Send commands to the owning session
 
 **As a** user working in multiple visible panes
@@ -123,6 +138,8 @@ agents must repeatedly switch tabs and cannot monitor both conversations.
 | BR-3 | Panel-local actions use a bound session ID; global editor actions use last focus. |
 | BR-4 | Only actual Content disposal destroys a session. Temporary removal never does. |
 | BR-5 | Capability selection is based on runtime availability, not an upper IDE version. |
+| BR-6 | Diff numbering is global; only completion of a real interaction group consumes a number. |
+| BR-7 | One participant is labeled by chat; overlapping participants are labeled Multiple chats. |
 
 ## User Experience
 
@@ -131,6 +148,7 @@ agents must repeatedly switch tabs and cannot monitor both conversations.
 - New Session in Right Split and New Session in Bottom Split create a fresh agent.
 - Unsplit reunites groups without changing session processes.
 - Unsupported capability failures are logged and degrade to ordinary single-tab behavior.
+- Every pane shows the same project-wide Diff timeline; only concurrent entries use Multiple chats.
 
 ## Non-Functional Requirements
 

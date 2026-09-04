@@ -33,6 +33,12 @@ import java.awt.Dimension
 import java.io.File
 import javax.swing.*
 
+internal fun interactionSessionLabel(diff: InteractionDiff, multipleChatsLabel: String): String = when {
+    diff.sessionNames.size > 1 -> multipleChatsLabel
+    diff.sessionNames.size == 1 -> diff.sessionNames.single()
+    else -> diff.sessionName
+}
+
 class DiffPanel(private val project: Project, private val onHistoryCleared: () -> Unit = {}) : JPanel(BorderLayout()) {
 
     private val listModel = DefaultListModel<FileDiffEntry>()
@@ -160,6 +166,7 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
     private fun showInitialState() {
         statusLabel.text = PrismBundle.message("diff.waiting")
         interactionLabel.text = ""
+        interactionLabel.toolTipText = null
     }
 
     /**
@@ -167,7 +174,6 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
      * Called by tab selection and the manual Refresh button.
      */
     fun refreshDiff() {
-        val wasHistoryCleared = historyCleared
         val shouldShowEmpty = currentDiff == null
 
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -176,23 +182,9 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
                 showDiffOnEdt(latest) { historyCleared = false }
                 return@executeOnPooledThread
             }
-
-            // After an explicit clear, don't auto-recompute a diff; wait for the next real interaction.
-            if (wasHistoryCleared) return@executeOnPooledThread
-
-            val diff = snapshotService.refreshVfsAndComputeDiff()
-            if (diff.changes.isNotEmpty() || shouldShowEmpty) showDiffOnEdt(diff)
-        }
-    }
-
-    /**
-     * Compute and show a NEW diff (called after interaction ends).
-     */
-    fun computeAndShowDiff() {
-        historyCleared = false
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val diff = snapshotService.refreshVfsAndComputeDiff()
-            if (diff.changes.isNotEmpty()) showDiffOnEdt(diff)
+            if (shouldShowEmpty && !historyCleared) {
+                showDiffOnEdt(InteractionDiff(0, System.currentTimeMillis(), emptyList()))
+            }
         }
     }
 
@@ -222,11 +214,15 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
         }
 
         interactionLabel.text = if (diff.interactionIndex > 0) {
-            val sessionSuffix = if (diff.sessionName.isNotBlank()) " — ${diff.sessionName}" else ""
+            val sessionLabel = interactionSessionLabel(diff, PrismBundle.message("diff.multiple.chats"))
+            val sessionSuffix = if (sessionLabel.isNotBlank()) " — $sessionLabel" else ""
             val label = if (isLatest) PrismBundle.message("diff.interaction.last", diff.interactionIndex)
                         else PrismBundle.message("diff.interaction", diff.interactionIndex)
             "$label$sessionSuffix"
         } else ""
+        interactionLabel.toolTipText = if (diff.sessionNames.size > 1) {
+            PrismBundle.message("diff.multiple.chats.tooltip", diff.sessionNames.joinToString(", "))
+        } else null
     }
 
     private fun isLatestInteraction(): Boolean {

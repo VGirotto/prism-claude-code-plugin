@@ -10,9 +10,9 @@
     "Generic Fury Docker validation is not applicable to this local JetBrains plugin."
   ],
   "stats": {
-    "total": 8,
-    "done": 8,
-    "by_layer": { "1": 5, "2": 0, "3": 3 }
+    "total": 11,
+    "done": 11,
+    "by_layer": { "1": 8, "2": 0, "3": 3 }
   },
   "tasks": [
     {
@@ -160,6 +160,68 @@
         "GATE: No unresolved security finding"
       ],
       "references": ["US-3", "US-5"]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Coordinate project-wide Diff interactions",
+      "description": "Serialize interaction begin and finish events, preserving one baseline across overlapping chats and recording only one global Diff when the group becomes idle.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": ["TASK-005"],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/services/GlobalInteractionCoordinator.kt",
+        "src/main/kotlin/com/github/vgirotto/prism/services/FileSnapshotService.kt",
+        "src/main/kotlin/com/github/vgirotto/prism/services/AgentProcessManager.kt"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Sequential chats produce separate consecutive interaction groups",
+        "AC-2: Overlapping chats share one baseline and one completion",
+        "GATE: Opening another session cannot reset active work"
+      ],
+      "references": ["US-6"]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Render deterministic global Diff attribution",
+      "description": "Keep the existing Chat label for a single participant and render localized Multiple chats attribution with a participant tooltip for overlapping sessions.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-009"],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/model/FileSnapshot.kt",
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/DiffPanel.kt",
+        "src/main/resources/messages/PrismBundle.properties",
+        "src/main/resources/messages/PrismBundle_pt.properties",
+        "src/main/resources/messages/PrismBundle_es.properties"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Single participant label remains unchanged",
+        "AC-2: Multiple participants use localized Multiple chats text and tooltip",
+        "GATE: Refresh and tab selection do not append history"
+      ],
+      "references": ["US-6"]
+    },
+    {
+      "id": "TASK-011",
+      "title": "Validate global Diff sequencing",
+      "description": "Add deterministic coordinator and presentation tests, then run the complete baseline and modern compatibility gates.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": ["TASK-009", "TASK-010"],
+      "files": [
+        "src/test/kotlin/com/github/vgirotto/prism/services/GlobalInteractionCoordinatorTest.kt",
+        "src/test/kotlin/com/github/vgirotto/prism/model/FileSnapshotTest.kt",
+        "src/test/kotlin/com/github/vgirotto/prism/toolwindow/DiffPanelTest.kt"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Sequential, overlap, overlap-chain, duplicate, rejoin, and reset cases pass",
+        "AC-2: Single and multiple participant labels pass",
+        "GATE: test and buildPlugin pass on 243 and tests pass on 262"
+      ],
+      "references": ["US-6"]
     }
   ],
   "dependency_graph": {
@@ -168,7 +230,10 @@
         "level_0": ["TASK-001", "TASK-002"],
         "level_1": ["TASK-003"],
         "level_2": ["TASK-004"],
-        "level_3": ["TASK-005"]
+        "level_3": ["TASK-005"],
+        "level_4": ["TASK-009"],
+        "level_5": ["TASK-010"],
+        "level_6": ["TASK-011"]
       },
       "2": {},
       "3": {

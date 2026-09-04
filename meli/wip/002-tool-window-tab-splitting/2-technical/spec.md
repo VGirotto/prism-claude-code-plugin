@@ -147,6 +147,19 @@ preserving build 243 support.
 **Rationale**: Persisting a platform-owned nested manager tree would add risk unrelated
 to the primary simultaneous-session outcome.
 
+### DD-5: One global Diff interaction coordinator
+
+**Options Considered**:
+- Per-session snapshots: separate entries but misleading attribution in a shared working tree.
+- Existing independent idle computation: can overwrite baselines and duplicate Diff entries.
+- Global overlap groups: one baseline and one entry for every connected period of activity.
+
+**Decision**: Serialize begin/finish events through `FileSnapshotService` and group
+overlapping sessions into one project-wide interaction.
+**Rationale**: The working tree is global, while sequential interactions can still retain
+their existing Chat label.
+**Trade-off**: A long-running overlapping chat delays the combined Diff until every participant is idle.
+
 ## Detailed Behavior
 
 ### Focus and manager resolution
@@ -171,6 +184,16 @@ stateDiagram-v2
 - Publishing the ID and disposing the binding use the same synchronized transition.
 - The EDT terminal attach runs only when state remains `ATTACHED`.
 - Temporary Content removal during split does not dispose the Content or binding.
+
+### Global Diff lifecycle
+
+1. The first participant captures the global baseline.
+2. Additional participants join without replacing that baseline.
+3. An idle participant leaves the active set without generating a Diff while others remain.
+4. The last participant computes one Diff and clears the group.
+5. Sequential groups therefore receive consecutive numbers; overlapping groups receive one number.
+6. The first live session may reset an idle baseline, but later sessions never reset active work.
+7. Refresh and tab selection display recorded history without appending a new entry.
 
 ## Compatibility Contract
 
@@ -206,6 +229,8 @@ range may appear in generally loaded bytecode.
 - Sequence gating is isolated per binding.
 - Lifecycle transitions reject attach after disposal and destroy once.
 - Focus/content resolver handles recursive managers and safe root fallback.
+- Global coordinator covers sequential, overlapping, chained, duplicate, and reset transitions.
+- Interaction attribution preserves one Chat label or selects Multiple chats for overlap.
 
 ### Integration Tests
 
