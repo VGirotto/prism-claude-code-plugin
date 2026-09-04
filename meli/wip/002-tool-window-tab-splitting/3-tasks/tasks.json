@@ -1,0 +1,179 @@
+{
+  "feature": "002-tool-window-tab-splitting",
+  "execution_strategy": "batched",
+  "local_config": {
+    "mysql": null,
+    "kvs": null,
+    "bigqueue": null
+  },
+  "validation_exceptions": [
+    "Generic Fury Docker validation is not applicable to this local JetBrains plugin."
+  ],
+  "stats": {
+    "total": 8,
+    "done": 8,
+    "by_layer": { "1": 5, "2": 0, "3": 3 }
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Add version-adaptive split support",
+      "description": "Implement runtime capability detection for modern ToolWindow splitting and the isolated build-243 legacy adapter. Fail closed to single-pane mode when neither capability is available.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": [],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/ToolWindowTabSplitSupport.kt"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Modern and legacy capabilities are probed without static linkage to version-specific classes",
+        "AC-2: Split Right, Split Down, and Unsplit resolve for supported runtimes",
+        "GATE: Plugin still compiles against IntelliJ Platform 2024.3"
+      ],
+      "references": ["US-1", "US-5"]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Bind UI commands to session IDs",
+      "description": "Introduce SessionUiBinding and ID-specific model and effort updates. Separate the panel-local command target from the last-focused global session.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": [],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/SessionUiBinding.kt",
+        "src/main/kotlin/com/github/vgirotto/prism/services/AgentProcessManager.kt"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Bound commands use the owning session even when another session is globally active",
+        "AC-2: Model, effort, and sequence gating operate per session",
+        "GATE: Lifecycle binding rejects attach after disposal and destroys at most once"
+      ],
+      "references": ["US-3", "US-4"]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Integrate recursive split-aware content management",
+      "description": "Update AgentToolWindowFactory to use focused managers, recursive contents, focus activation, and synchronized startup lifecycle. Preserve disposer-only teardown.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": ["TASK-001", "TASK-002"],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/AgentToolWindowFactory.kt"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Split and unsplit preserve Content and session identity",
+        "AC-2: New tabs and History target the focused group with a safe root fallback",
+        "AC-3: Diff operations reach recursive split contents",
+        "GATE: Close during startup cannot attach a disposed terminal"
+      ],
+      "references": ["US-1", "US-2", "US-4"]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Add split actions and bound toolbar behavior",
+      "description": "Expose move and new-session split actions and refactor the toolbar and local terminal shortcuts to use SessionUiBinding.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": ["TASK-001", "TASK-002", "TASK-003"],
+      "files": [
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/AgentToolbar.kt",
+        "src/main/kotlin/com/github/vgirotto/prism/toolwindow/NewSessionPopupAction.kt",
+        "src/main/resources/messages/PrismBundle.properties",
+        "src/main/resources/messages/PrismBundle_pt.properties",
+        "src/main/resources/messages/PrismBundle_es.properties"
+      ],
+      "acceptance_criteria": [
+        "AC-1: Move Right, Move Down, Unsplit, and New Session in Split are discoverable",
+        "AC-2: Every panel-local action uses its bound session",
+        "GATE: Existing single-pane behavior remains unchanged"
+      ],
+      "references": ["US-1", "US-2", "US-3"]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Add regressions and release metadata",
+      "description": "Cover capability selection, binding, routing, and lifecycle logic, then prepare the complete Prism 1.4.0 version surfaces and user documentation.",
+      "status": "completed",
+      "layer": 1,
+      "complexity": "High",
+      "depends_on": ["TASK-003", "TASK-004"],
+      "files": [
+        "src/test/kotlin/com/github/vgirotto/prism/toolwindow/",
+        "gradle.properties",
+        "README.md",
+        "README.pt-BR.md",
+        "CHANGELOG.md",
+        "src/main/resources/META-INF/plugin.xml"
+      ],
+      "acceptance_criteria": [
+        "AC-1: New pure logic has at least 80 percent coverage",
+        "AC-2: Version 1.4.0 is consistent across all required release files",
+        "GATE: Unit tests and buildPlugin pass on the build-243 baseline"
+      ],
+      "references": ["US-3", "US-4", "US-5"]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Run final code review",
+      "description": "Review the complete diff for correctness, compatibility, maintainability, and lifecycle regressions. Resolve all actionable findings.",
+      "status": "completed",
+      "layer": 3,
+      "complexity": "Medium",
+      "depends_on": ["TASK-005"],
+      "files": [],
+      "acceptance_criteria": [
+        "AC-1: Review distinguishes introduced issues from pre-existing risks",
+        "GATE: No unresolved critical, major, or minor finding"
+      ],
+      "references": ["US-1", "US-2", "US-3", "US-4", "US-5"]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Run performance review",
+      "description": "Verify split operations do not restart sessions or add blocking work to the EDT and recursive scans remain bounded.",
+      "status": "completed",
+      "layer": 3,
+      "complexity": "Medium",
+      "depends_on": ["TASK-005"],
+      "files": [],
+      "acceptance_criteria": [
+        "AC-1: No process recreation occurs for split or unsplit",
+        "GATE: No unresolved performance finding"
+      ],
+      "references": ["US-1", "US-4"]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Run security review",
+      "description": "Review fixed reflection targets, session command isolation, errors, and dependency changes for security regressions.",
+      "status": "completed",
+      "layer": 3,
+      "complexity": "Medium",
+      "depends_on": ["TASK-005"],
+      "files": [],
+      "acceptance_criteria": [
+        "AC-1: Reflection accepts no user-controlled class or method names",
+        "GATE: No unresolved security finding"
+      ],
+      "references": ["US-3", "US-5"]
+    }
+  ],
+  "dependency_graph": {
+    "by_layer": {
+      "1": {
+        "level_0": ["TASK-001", "TASK-002"],
+        "level_1": ["TASK-003"],
+        "level_2": ["TASK-004"],
+        "level_3": ["TASK-005"]
+      },
+      "2": {},
+      "3": {
+        "level_0": ["TASK-006", "TASK-007", "TASK-008"]
+      }
+    }
+  }
+}

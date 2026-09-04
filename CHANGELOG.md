@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-09-04
+
+### Added
+
+- **Split agent sessions**: move Prism session tabs into right or bottom Tool Window splits, reunite them with Unsplit, or create a new independent session directly in a split.
+- **Version-adaptive JetBrains support**: use the current Tool Window splitting capability when available while retaining an isolated compatibility path for build 243-era IDEs.
+
+### Changed
+
+- **Session-targeted controls**: terminal shortcuts and toolbar actions now stay bound to their owning session when multiple panes are visible; editor actions continue targeting the last focused Prism session.
+
+### Fixed
+
+- **Startup lifecycle**: closing a session while its PTY is starting can no longer attach a terminal after disposal or leave an orphan process.
+
 ## [1.3.1] — 2026-08-26
 
 ### Fixed
