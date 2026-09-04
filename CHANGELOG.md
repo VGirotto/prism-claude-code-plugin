@@ -15,10 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Session-targeted controls**: terminal shortcuts and toolbar actions now stay bound to their owning session when multiple panes are visible; editor actions continue targeting the last focused Prism session.
+- **Project-wide Diff timeline**: sequential sessions keep independent numbered interactions, while overlapping sessions share one baseline and produce one `Multiple chats` entry after every participant becomes idle.
 
 ### Fixed
 
 - **Startup lifecycle**: closing a session while its PTY is starting can no longer attach a terminal after disposal or leave an orphan process.
+- **Diff snapshot coordination**: opening another session, startup output, tab selection, and manual refresh no longer reset pending work or append duplicate interaction numbers.
 
 ## [1.3.1] — 2026-08-26
 

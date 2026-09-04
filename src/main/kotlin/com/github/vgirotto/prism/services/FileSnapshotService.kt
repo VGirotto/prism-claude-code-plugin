@@ -51,10 +51,7 @@ class FileSnapshotService(private val project: Project) : Disposable {
 
     private val diffHistory = mutableListOf<InteractionDiff>()
     private var interactionCounter = 0
-
-    /** Name of the session that triggered the last snapshot */
-    @Volatile
-    var lastSessionName: String = ""
+    private val interactionCoordinator = GlobalInteractionCoordinator()
 
     private val excludeFilePatterns = listOf(
         Regex(".*\\.iml$"),
@@ -97,37 +94,35 @@ class FileSnapshotService(private val project: Project) : Disposable {
     private fun getMaxFileSize(): Long =
         AgentSettingsState.getInstance().maxFileSizeKb.toLong() * 1024
 
-    /**
-     * Takes a snapshot, serialized through the executor.
-     * Safe to call from any thread — blocks until complete.
-     */
-    fun takeSnapshot() {
-        submitAndWait { takeSnapshotInternal() }
+    /** Starts or joins a project-wide interaction interval. */
+    fun beginInteraction(sessionId: String, sessionName: String) {
+        submitAndWait {
+            if (interactionCoordinator.begin(sessionId, sessionName)) {
+                takeSnapshotInternal()
+            }
+        }
     }
 
-    /**
-     * Computes diff, serialized through the executor.
-     * Safe to call from any thread — blocks until complete.
-     */
-    fun computeDiff(): InteractionDiff {
-        return submitAndGet { computeDiffInternal() } ?: emptyDiff()
-    }
-
-    /**
-     * Refreshes the project's VFS from disk, then computes the diff.
-     *
-     * The agent edits files through the terminal, outside the IDE, and IntelliJ doesn't detect those
-     * external changes on its own. The synchronous VFS refresh re-scans the disk, firing the file
-     * change listener so [changedPaths] is populated (newly created files are only discovered this
-     * way) and open editors reload with the new content before the diff is computed.
-     *
-     * Must be called off the EDT — the synchronous `refresh(false, true)` blocks until the VFS is
-     * up to date. Callers already run on a pooled thread, so this keeps the UI responsive while
-     * restoring both behaviors.
-     */
-    fun refreshVfsAndComputeDiff(): InteractionDiff {
-        refreshProjectVfs()
-        return computeDiff()
+    /** Queues completion immediately without blocking callers such as the EDT. */
+    fun finishInteractionAsync(sessionId: String, onFinished: (InteractionDiff?) -> Unit) {
+        if (executor.isShutdown) {
+            onFinished(null)
+            return
+        }
+        try {
+            executor.submit {
+                val diff = try {
+                    finishInteractionInternal(sessionId)
+                } catch (e: Exception) {
+                    log.warn("Snapshot operation failed: ${e.message}", e)
+                    null
+                }
+                onFinished(diff)
+            }
+        } catch (e: Exception) {
+            log.warn("Could not queue interaction completion: ${e.message}", e)
+            onFinished(null)
+        }
     }
 
     private fun refreshProjectVfs() {
@@ -163,8 +158,11 @@ class FileSnapshotService(private val project: Project) : Disposable {
      * current project state (including changes from previous sessions), preventing the idle listener
      * from computing a spurious diff that duplicates the previous session's interactions.
      */
-    fun resetSnapshot() {
-        submitAndWait { resetSnapshotInternal() }
+    /** Resets a fresh-session baseline without discarding a closing interaction. */
+    fun resetSnapshotIfNoActiveInteraction() {
+        submitAndWait {
+            if (!interactionCoordinator.hasActiveInteraction()) resetSnapshotInternal()
+        }
     }
 
     /**
@@ -249,6 +247,7 @@ class FileSnapshotService(private val project: Project) : Disposable {
     // ── Internal operations (run on executor thread) ──
 
     private fun resetSnapshotInternal() {
+        interactionCoordinator.reset()
         cleanupSnapshotDir()
         synchronized(changedPaths) { changedPaths.clear() }
         val basePath = project.basePath ?: return
@@ -294,7 +293,9 @@ class FileSnapshotService(private val project: Project) : Disposable {
         }
     }
 
-    private fun computeDiffInternal(): InteractionDiff {
+    private fun computeDiffInternal(
+        attribution: InteractionAttribution = InteractionAttribution(emptyList()),
+    ): InteractionDiff {
         val basePath = project.basePath ?: return emptyDiff()
         val tempDir = snapshotDir ?: return emptyDiff()
         if (snapshotHashes.isEmpty()) return emptyDiff()
@@ -376,13 +377,20 @@ class FileSnapshotService(private val project: Project) : Disposable {
             interactionIndex = diffHistory.size + 1,
             timestamp = System.currentTimeMillis(),
             changes = changes.sortedBy { it.path },
-            sessionName = lastSessionName,
+            sessionName = attribution.sessionNames.singleOrNull().orEmpty(),
+            sessionNames = attribution.sessionNames,
         )
         synchronized(diffHistory) {
             diffHistory.add(diff)
         }
         log.info("Diff: ${changes.size} changes (interaction #${diff.interactionIndex})")
         return diff
+    }
+
+    private fun finishInteractionInternal(sessionId: String): InteractionDiff? {
+        refreshProjectVfs()
+        val attribution = interactionCoordinator.finish(sessionId) ?: return null
+        return computeDiffInternal(attribution)
     }
 
     private fun fullCopy(

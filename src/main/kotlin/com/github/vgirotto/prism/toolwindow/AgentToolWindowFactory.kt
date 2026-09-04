@@ -166,21 +166,12 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         })
 
         // Idle listener: compute one new diff off the UI thread, then show it on all DiffPanels.
-        AgentProcessManager.getInstance(project).addIdleListener {
+        AgentProcessManager.getInstance(project).addIdleListener { diff ->
+            if (project.isDisposed) return@addIdleListener
             val panels = toolWindow.contentManager.contentsRecursively.mapNotNull {
                 it.getUserData(DIFF_PANEL_KEY)
             }
-            if (panels.isEmpty()) return@addIdleListener
-
-            ApplicationManager.getApplication().executeOnPooledThread {
-                val diff = FileSnapshotService.getInstance(project).refreshVfsAndComputeDiff()
-                if (diff.changes.isEmpty()) return@executeOnPooledThread
-
-                ApplicationManager.getApplication().invokeLater {
-                    if (project.isDisposed) return@invokeLater
-                    panels.forEach { it.showDiff(diff) }
-                }
-            }
+            panels.forEach { it.showDiff(diff) }
         }
 
         // Process death listener: notify when session dies unexpectedly

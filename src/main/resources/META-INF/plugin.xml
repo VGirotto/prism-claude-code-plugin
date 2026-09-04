@@ -54,7 +54,9 @@
         <li>New: split Prism sessions to the right or bottom, or create a new independent session directly in a split</li>
         <li>New: version-adaptive Tool Window splitting keeps compatibility with JetBrains build 243 and newer</li>
         <li>Change: terminal shortcuts and toolbar controls target their owning session when multiple panes are visible</li>
+        <li>Change: overlapping sessions share one project-wide Diff entry labeled Multiple chats</li>
         <li>Fix: closing a tab during PTY startup cannot attach a disposed terminal or leave an orphan process</li>
+        <li>Fix: new sessions, startup output, tab selection, and refresh no longer reset or duplicate pending Diff interactions</li>
     </ul>
     <h2>v1.3.1 — Stability &amp; Security Fixes</h2>
     <ul>
