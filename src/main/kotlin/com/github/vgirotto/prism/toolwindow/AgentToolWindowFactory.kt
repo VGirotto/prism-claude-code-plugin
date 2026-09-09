@@ -15,6 +15,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.SearchableConfigurable
@@ -22,6 +23,7 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.BuildNumber
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
@@ -62,6 +64,14 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         val DIFF_PANEL_KEY = Key.create<DiffPanel>("AgentDiffPanel")
 
         private const val TERMINAL_CONFIGURABLE_ID = "terminal"
+
+        /** IntelliJ IDEA 2025.1.1, the first build with dedicated terminal font settings. */
+        private val TERMINAL_FONT_SETTINGS_SINCE_BUILD: BuildNumber =
+            requireNotNull(BuildNumber.fromString("251.25410"))
+
+        /** An older IDE gets no entry, since its console font page errors out on open anyway. */
+        internal fun supportsDedicatedTerminalFontSettings(build: BuildNumber): Boolean =
+            build >= TERMINAL_FONT_SETTINGS_SINCE_BUILD
 
         private var sessionCounter = 0
 
@@ -123,16 +133,18 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
 
         toolWindow.setTitleActions(listOf(newSessionAction, historyAction, toggleChangesAction))
 
-        val fontSettingsAction = object : DumbAwareAction(
-            PrismBundle.message("toolwindow.font.settings"),
-            PrismBundle.message("toolwindow.font.settings.desc"),
-            AllIcons.General.Settings
-        ) {
-            override fun actionPerformed(e: AnActionEvent) {
-                openTerminalSettings(project)
+        if (supportsDedicatedTerminalFontSettings(ApplicationInfo.getInstance().build)) {
+            val fontSettingsAction = object : DumbAwareAction(
+                PrismBundle.message("toolwindow.font.settings"),
+                PrismBundle.message("toolwindow.font.settings.desc"),
+                AllIcons.General.Settings
+            ) {
+                override fun actionPerformed(e: AnActionEvent) {
+                    openTerminalSettings(project)
+                }
             }
+            toolWindow.setAdditionalGearActions(DefaultActionGroup(fontSettingsAction))
         }
-        toolWindow.setAdditionalGearActions(DefaultActionGroup(fontSettingsAction))
 
         // Listen for tab selection changes. Session teardown is deliberately not wired
         // here — see the content disposer in buildSessionTab.
