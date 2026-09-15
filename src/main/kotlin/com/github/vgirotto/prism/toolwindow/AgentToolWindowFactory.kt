@@ -27,12 +27,9 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindow
-import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowFactory
-import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.JBTerminalSystemSettingsProviderBase
 import com.intellij.terminal.JBTerminalWidget
-import com.intellij.ui.JBSplitter
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.ui.content.Content
@@ -63,8 +60,6 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
 
     companion object {
         val SESSION_ID_KEY = Key.create<String>("AgentSessionId")
-        val DIFF_PANEL_KEY = Key.create<DiffPanel>("AgentDiffPanel")
-        val DIFF_PROPORTION_KEY = Key.create<Float>("AgentDiffProportion")
 
         private var sessionCounter = 0
 
@@ -82,6 +77,8 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         resetCounter()
 
         val changesVisibleOnStartup = AgentSettingsState.getInstance().showChangesOnStartup
+        val splitSupport = ToolWindowTabSplitSupport(toolWindow)
+        val globalDiffHost = GlobalDiffContentHost.install(project, toolWindow, splitSupport)
 
         // Toggle action for the Changes panel
         val toggleChangesAction = object : ToggleAction(
@@ -90,20 +87,14 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             AllIcons.Actions.PreviewDetails
         ), DumbAware {
             override fun isSelected(e: AnActionEvent): Boolean {
-                val splitter = findActiveContent(project, toolWindow)?.component as? JBSplitter
-                return splitter?.secondComponent != null
+                return globalDiffHost.isVisible()
             }
 
             override fun setSelected(e: AnActionEvent, state: Boolean) {
-                val activeContent = findActiveContent(project, toolWindow) ?: return
-                val splitter = activeContent.component as? JBSplitter ?: return
-                val dp = activeContent.getUserData(DIFF_PANEL_KEY) ?: return
                 if (state) {
-                    splitter.secondComponent = dp
-                    splitter.proportion = activeContent.getUserData(DIFF_PROPORTION_KEY) ?: 0.65f
+                    globalDiffHost.show()
                 } else {
-                    activeContent.putUserData(DIFF_PROPORTION_KEY, splitter.proportion)
-                    splitter.secondComponent = null
+                    globalDiffHost.hide()
                 }
             }
 
@@ -122,7 +113,6 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             targetManagerProvider = { resolveActionManager(project, toolWindow, it) },
         )
 
-        val splitSupport = ToolWindowTabSplitSupport(toolWindow)
         val splitActions = DefaultActionGroup(
             PrismBundle.message("toolwindow.split"), true,
         ).apply {
@@ -161,17 +151,14 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 if (sessionId != null) {
                     AgentProcessManager.getInstance(project).setActiveSession(sessionId)
                 }
-                event.content.getUserData(DIFF_PANEL_KEY)?.refreshDiff()
+                globalDiffHost.refreshDiff()
             }
         })
 
-        // Idle listener: compute one new diff off the UI thread, then show it on all DiffPanels.
+        // Idle listener: compute one new diff off the UI thread, then update the global DiffPanel.
         AgentProcessManager.getInstance(project).addIdleListener { diff ->
             if (project.isDisposed) return@addIdleListener
-            val panels = toolWindow.contentManager.contentsRecursively.mapNotNull {
-                it.getUserData(DIFF_PANEL_KEY)
-            }
-            panels.forEach { it.showDiff(diff) }
+            globalDiffHost.showDiff(diff)
         }
 
         // Process death listener: notify when session dies unexpectedly
@@ -187,16 +174,14 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 .notify(project)
         }
 
-        // Create the first session tab
+        // Create the first session tab. The global Diff content is split from it
+        // after the asynchronous CLI preflight finishes.
         if (AgentSettingsState.getInstance().autoStartOnOpen) {
-            createSessionTab(project, toolWindow, changesVisibleOnStartup)
+            createSessionTab(project, toolWindow, changesVisibleOnStartup, globalDiffHost = globalDiffHost)
         }
     }
 
-    /**
-     * Creates a new tab with its own terminal session and DiffPanel.
-     * Each tab owns its DiffPanel — no shared component, no parent issues.
-     */
+    /** Creates a new tab with its own terminal session. */
     internal fun createSessionTab(
         project: Project,
         toolWindow: ToolWindow,
@@ -205,6 +190,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         requestedManager: ContentManager? = null,
         splitDirection: SplitDirection? = null,
         splitSupport: ToolWindowTabSplitSupport? = null,
+        globalDiffHost: GlobalDiffContentHost? = null,
     ) {
         // Validate the requested CLI is available before creating UI, using the
         // user-configured path so custom binary locations are honored. The check
@@ -213,6 +199,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         // the EDT, so resolve it on a pooled thread and build the tab UI back on
         // the EDT once the CLI is confirmed present.
         val settings = AgentSettingsState.getInstance()
+        val effectiveGlobalDiffHost = globalDiffHost ?: GlobalDiffContentHost.get(toolWindow)
         ApplicationManager.getApplication().executeOnPooledThread {
             // Keep the resolved command, not just a yes/no: the session launches this
             // exact binary with the configured literal arguments.
@@ -243,6 +230,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                     validManager(toolWindow, requestedManager),
                     splitDirection,
                     splitSupport,
+                    effectiveGlobalDiffHost,
                 )
             }
         }
@@ -262,6 +250,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         targetManager: ContentManager,
         splitDirection: SplitDirection?,
         splitSupport: ToolWindowTabSplitSupport?,
+        globalDiffHost: GlobalDiffContentHost?,
     ) {
         val disposable = Disposer.newDisposable("AgentSession")
         Disposer.register(toolWindow.disposable, disposable)
@@ -356,45 +345,11 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 add(terminalWidget.component, BorderLayout.CENTER)
             }
 
-            // Each tab gets its own DiffPanel (no parent-sharing issues)
-            val diffPanel = DiffPanel(project) {
-                // When history is cleared, reset ALL DiffPanels across all tabs
-                for (existingContent in toolWindow.contentManager.contentsRecursively) {
-                    existingContent.getUserData(DIFF_PANEL_KEY)?.clearAndReset()
-                }
-            }
-
-            val isSideDock = toolWindow.anchor == ToolWindowAnchor.LEFT ||
-                toolWindow.anchor == ToolWindowAnchor.RIGHT
-
-            val splitter = JBSplitter(isSideDock, if (isSideDock) 0.6f else 0.65f).apply {
-                firstComponent = terminalWithToolbar
-                dividerWidth = 3
-            }
-
-            if (changesVisible) {
-                splitter.secondComponent = diffPanel
-            }
-
-            splitter.addHierarchyListener {
-                val tw = ToolWindowManager.getInstance(project).getToolWindow("Prism")
-                if (tw != null) {
-                    val shouldBeVertical = tw.anchor == ToolWindowAnchor.LEFT ||
-                        tw.anchor == ToolWindowAnchor.RIGHT
-                    if (splitter.orientation != shouldBeVertical) {
-                        splitter.orientation = shouldBeVertical
-                        splitter.proportion = if (shouldBeVertical) 0.6f else 0.65f
-                    }
-                }
-            }
-
             val sessionName = nextSessionName()
             val content = targetManager.factory.createContent(
-                splitter, sessionName, false
+                terminalWithToolbar, sessionName, false
             )
             content.isCloseable = true
-            content.putUserData(DIFF_PANEL_KEY, diffPanel)
-            content.putUserData(DIFF_PROPORTION_KEY, splitter.proportion)
 
             // The session lives and dies with the tab, and only tab *disposal* means the
             // tab is gone. Reordering tabs by dragging one removes its Content with
@@ -413,10 +368,11 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             targetManager.addContent(content)
             targetManager.setSelectedContent(content)
 
-            installFocusActivation(splitter, disposable, binding)
+            installFocusActivation(terminalWithToolbar, disposable, binding)
             if (splitDirection != null && splitSupport != null) {
                 splitSupport.perform(splitDirection, targetManager, terminalWidget.component)
             }
+            globalDiffHost?.sessionCreated(content, changesVisible)
 
             // Start agent session
             ApplicationManager.getApplication().executeOnPooledThread {
@@ -484,6 +440,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
 
     private fun findActiveContent(project: Project, toolWindow: ToolWindow): Content? {
         val contents = toolWindow.contentManager.contentsRecursively
+            .filterNot(GlobalDiffContentHost::isGlobalDiff)
         val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
         if (focusOwner != null) {
             contents.firstOrNull {
