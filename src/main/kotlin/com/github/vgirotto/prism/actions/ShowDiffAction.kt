@@ -1,6 +1,6 @@
 package com.github.vgirotto.prism.actions
 
-import com.github.vgirotto.prism.toolwindow.AgentToolWindowFactory
+import com.github.vgirotto.prism.toolwindow.GlobalDiffContentHost
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -13,8 +13,9 @@ class ShowDiffAction : AnAction() {
 
         val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Prism") ?: return
         toolWindow.activate {
-            for (content in toolWindow.contentManager.contentsRecursively) {
-                content.getUserData(AgentToolWindowFactory.DIFF_PANEL_KEY)?.refreshDiff()
+            GlobalDiffContentHost.get(toolWindow)?.apply {
+                show()
+                refreshDiff()
             }
         }
     }
