@@ -15,11 +15,15 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.BuildNumber
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.SystemInfo
@@ -28,7 +32,6 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowAnchor
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.terminal.JBTerminalSystemSettingsProviderBase
 import com.intellij.terminal.JBTerminalWidget
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.content.ContentManagerEvent
@@ -50,6 +53,7 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.SwingConstants
+import org.jetbrains.plugins.terminal.JBTerminalSystemSettingsProvider
 
 class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
 
@@ -58,6 +62,16 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
     companion object {
         val SESSION_ID_KEY = Key.create<String>("AgentSessionId")
         val DIFF_PANEL_KEY = Key.create<DiffPanel>("AgentDiffPanel")
+
+        private const val TERMINAL_CONFIGURABLE_ID = "terminal"
+
+        /** IntelliJ IDEA 2025.1.1, the first build with dedicated terminal font settings. */
+        private val TERMINAL_FONT_SETTINGS_SINCE_BUILD: BuildNumber =
+            requireNotNull(BuildNumber.fromString("251.25410"))
+
+        /** An older IDE gets no entry, since its console font page errors out on open anyway. */
+        internal fun supportsDedicatedTerminalFontSettings(build: BuildNumber): Boolean =
+            build >= TERMINAL_FONT_SETTINGS_SINCE_BUILD
 
         private var sessionCounter = 0
 
@@ -118,6 +132,19 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         }
 
         toolWindow.setTitleActions(listOf(newSessionAction, historyAction, toggleChangesAction))
+
+        if (supportsDedicatedTerminalFontSettings(ApplicationInfo.getInstance().build)) {
+            val fontSettingsAction = object : DumbAwareAction(
+                PrismBundle.message("toolwindow.font.settings"),
+                PrismBundle.message("toolwindow.font.settings.desc"),
+                AllIcons.General.Settings
+            ) {
+                override fun actionPerformed(e: AnActionEvent) {
+                    openTerminalSettings(project)
+                }
+            }
+            toolWindow.setAdditionalGearActions(DefaultActionGroup(fontSettingsAction))
+        }
 
         // Listen for tab selection changes. Session teardown is deliberately not wired
         // here — see the content disposer in buildSessionTab.
@@ -227,7 +254,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         Disposer.register(toolWindow.disposable, disposable)
 
         try {
-            val settingsProvider = JBTerminalSystemSettingsProviderBase()
+            val settingsProvider = JBTerminalSystemSettingsProvider()
             val terminalWidget = JBTerminalWidget(project, settingsProvider, disposable)
 
             // The picker takes focus so the press that closes it never reaches the terminal;
@@ -434,6 +461,15 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         toolWindow.contentManager.addContent(content)
         toolWindow.contentManager.setSelectedContent(content)
         historyPanel.loadHistory()
+    }
+
+    private fun openTerminalSettings(project: Project) {
+        // Matched on ID: the page's implementation class moves between releases, and its name is localized.
+        ShowSettingsUtil.getInstance().showSettingsDialog(
+            project,
+            { it is SearchableConfigurable && it.id == TERMINAL_CONFIGURABLE_ID },
+            null
+        )
     }
 
     private fun showCliNotFoundError(project: Project, toolWindow: ToolWindow, cli: AgentCli) {
