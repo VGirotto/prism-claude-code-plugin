@@ -494,7 +494,12 @@ class AgentProcessManager(private val project: Project) : Disposable {
         log.info("Session destroyed: ${session.name} [${session.id}]")
 
         if (activeSessionId == sessionId) {
-            activeSessionId = null
+            val fallbackId = sessions.keys.firstOrNull()
+            if (fallbackId != null) {
+                setActiveSession(fallbackId)
+            } else {
+                activeSessionId = null
+            }
         }
     }
 
