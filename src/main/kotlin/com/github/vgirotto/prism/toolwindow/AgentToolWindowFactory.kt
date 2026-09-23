@@ -61,21 +61,25 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
     companion object {
         val SESSION_ID_KEY = Key.create<String>("AgentSessionId")
 
-        private var sessionCounter = 0
+        private val chatNamePattern = Regex("""^Chat #(\d+)$""")
 
-        fun nextSessionName(): String {
-            sessionCounter++
-            return "Chat #$sessionCounter"
-        }
-
-        fun resetCounter() {
-            sessionCounter = 0
+        /**
+         * Names the next tab from the highest "Chat #N" currently open in this tool window,
+         * rather than a static counter. `canCloseContents="true"` (plugin.xml) makes the platform
+         * re-invoke [createToolWindowContent] — and previously reset a shared counter — whenever
+         * this tool window's content is reinitialized, which produced duplicate tab names when
+         * older tabs were still around. Scoping to the currently open tabs makes the name
+         * collision-proof regardless of how many times that happens.
+         */
+        fun nextSessionName(toolWindow: ToolWindow): String {
+            val highest = toolWindow.contentManager.contentsRecursively
+                .mapNotNull { chatNamePattern.matchEntire(it.displayName.orEmpty())?.groupValues?.get(1)?.toIntOrNull() }
+                .maxOrNull() ?: 0
+            return "Chat #${highest + 1}"
         }
     }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        resetCounter()
-
         val changesVisibleOnStartup = AgentSettingsState.getInstance().showChangesOnStartup
         val splitSupport = ToolWindowTabSplitSupport(toolWindow)
         val globalDiffHost = GlobalDiffContentHost.install(project, toolWindow, splitSupport)
@@ -345,7 +349,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 add(terminalWidget.component, BorderLayout.CENTER)
             }
 
-            val sessionName = nextSessionName()
+            val sessionName = nextSessionName(toolWindow)
             val content = targetManager.factory.createContent(
                 terminalWithToolbar, sessionName, false
             )
