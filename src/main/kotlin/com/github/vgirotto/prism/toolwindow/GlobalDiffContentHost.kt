@@ -98,9 +98,12 @@ internal class GlobalDiffContentHost(
         }
 
         val activeSessionId = AgentProcessManager.getInstance(project).activeSessionId
-        return contents.firstOrNull {
-            it.getUserData(AgentToolWindowFactory.SESSION_ID_KEY) == activeSessionId
-        } ?: toolWindow.contentManager.selectedContent?.takeUnless(::isGlobalDiff)
+        if (activeSessionId != null) {
+            contents.firstOrNull {
+                it.getUserData(AgentToolWindowFactory.SESSION_ID_KEY) == activeSessionId
+            }?.let { return it }
+        }
+        return toolWindow.contentManager.selectedContent?.takeUnless(::isGlobalDiff)
             ?: contents.firstOrNull()
     }
 
