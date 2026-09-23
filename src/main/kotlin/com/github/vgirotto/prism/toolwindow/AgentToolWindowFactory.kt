@@ -192,8 +192,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         changesVisible: Boolean,
         cli: AgentCli = AgentSettingsState.getInstance().defaultCli,
         requestedManager: ContentManager? = null,
-        splitDirection: SplitDirection? = null,
-        splitSupport: ToolWindowTabSplitSupport? = null,
+        splitRequest: SplitRequest? = null,
         globalDiffHost: GlobalDiffContentHost? = null,
     ) {
         // Validate the requested CLI is available before creating UI, using the
@@ -232,8 +231,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                     cli,
                     resolvedCommand,
                     validManager(toolWindow, requestedManager),
-                    splitDirection,
-                    splitSupport,
+                    splitRequest,
                     effectiveGlobalDiffHost,
                 )
             }
@@ -252,8 +250,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         cli: AgentCli,
         resolvedCommand: ResolvedCliCommand,
         targetManager: ContentManager,
-        splitDirection: SplitDirection?,
-        splitSupport: ToolWindowTabSplitSupport?,
+        splitRequest: SplitRequest?,
         globalDiffHost: GlobalDiffContentHost?,
     ) {
         val disposable = Disposer.newDisposable("AgentSession")
@@ -373,9 +370,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             targetManager.setSelectedContent(content)
 
             installFocusActivation(terminalWithToolbar, disposable, binding)
-            if (splitDirection != null && splitSupport != null) {
-                splitSupport.perform(splitDirection, targetManager, terminalWidget.component)
-            }
+            splitRequest?.let { it.support.perform(it.direction, targetManager, terminalWidget.component) }
             globalDiffHost?.sessionCreated(content, changesVisible)
 
             // Start agent session
@@ -526,8 +521,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                             changesVisible,
                             cli,
                             manager,
-                            direction,
-                            support,
+                            SplitRequest(direction, support),
                         )
                     }
 
