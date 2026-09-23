@@ -20,6 +20,33 @@ internal fun globalDiffSplitDirection(anchor: ToolWindowAnchor): SplitDirection 
     }
 
 /**
+ * Resolves the tab a toolwindow-level action should act on: whichever session content
+ * currently holds keyboard focus, else the one matching [AgentProcessManager.activeSessionId],
+ * else the selected tab, else the first tab — skipping the global Diff content throughout.
+ * Shared by [GlobalDiffContentHost] and [AgentToolWindowFactory] so the two callers can't
+ * drift out of sync the way they previously did.
+ */
+internal fun resolveActiveSessionContent(project: Project, toolWindow: ToolWindow): Content? {
+    val contents = toolWindow.contentManager.contentsRecursively
+        .filterNot(GlobalDiffContentHost::isGlobalDiff)
+    val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
+    if (focusOwner != null) {
+        contents.firstOrNull {
+            focusOwner === it.component || SwingUtilities.isDescendingFrom(focusOwner, it.component)
+        }?.let { return it }
+    }
+
+    val activeSessionId = AgentProcessManager.getInstance(project).activeSessionId
+    if (activeSessionId != null) {
+        contents.firstOrNull {
+            it.getUserData(AgentToolWindowFactory.SESSION_ID_KEY) == activeSessionId
+        }?.let { return it }
+    }
+    return toolWindow.contentManager.selectedContent?.takeUnless(GlobalDiffContentHost::isGlobalDiff)
+        ?: contents.firstOrNull()
+}
+
+/**
  * Owns the single project-wide Diff UI and presents it as an independent
  * ToolWindow content split. Session contents never own or duplicate this panel.
  */
@@ -87,25 +114,7 @@ internal class GlobalDiffContentHost(
     private fun splitFrom(manager: ContentManager): Boolean =
         splitSupport.perform(globalDiffSplitDirection(toolWindow.anchor), manager, diffPanel)
 
-    private fun findActiveSessionContent(): Content? {
-        val contents = toolWindow.contentManager.contentsRecursively
-            .filterNot { isGlobalDiff(it) }
-        val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
-        if (focusOwner != null) {
-            contents.firstOrNull {
-                focusOwner === it.component || SwingUtilities.isDescendingFrom(focusOwner, it.component)
-            }?.let { return it }
-        }
-
-        val activeSessionId = AgentProcessManager.getInstance(project).activeSessionId
-        if (activeSessionId != null) {
-            contents.firstOrNull {
-                it.getUserData(AgentToolWindowFactory.SESSION_ID_KEY) == activeSessionId
-            }?.let { return it }
-        }
-        return toolWindow.contentManager.selectedContent?.takeUnless(::isGlobalDiff)
-            ?: contents.firstOrNull()
-    }
+    private fun findActiveSessionContent(): Content? = resolveActiveSessionContent(project, toolWindow)
 
     companion object {
         private val CONTENT_KEY = Key.create<Boolean>("PrismGlobalDiffContent")
