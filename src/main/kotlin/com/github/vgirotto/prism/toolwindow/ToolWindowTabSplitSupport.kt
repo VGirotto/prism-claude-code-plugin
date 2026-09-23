@@ -11,6 +11,9 @@ import java.awt.Component
 internal enum class SplitDirection { RIGHT, DOWN, UNSPLIT }
 internal enum class SplitStrategyKind { MODERN, LEGACY, UNAVAILABLE }
 
+/** A direction only makes sense together with the support that can carry it out; pass both or neither. */
+internal data class SplitRequest(val direction: SplitDirection, val support: ToolWindowTabSplitSupport)
+
 internal fun selectSplitStrategy(hasModernApi: Boolean, hasLegacyActions: Boolean): SplitStrategyKind = when {
     hasModernApi -> SplitStrategyKind.MODERN
     hasLegacyActions -> SplitStrategyKind.LEGACY
