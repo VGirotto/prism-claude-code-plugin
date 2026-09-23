@@ -170,13 +170,25 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
     }
 
     /**
-     * Refresh the display: show the latest diff from history.
-     * Called by tab selection and the manual Refresh button.
+     * Refresh the display. Called by tab selection and the manual Refresh button.
+     *
+     * When no agent session is mid-interaction, recomputes the diff straight from disk so
+     * changes made outside an agent interaction (manual edits) are picked up. While any session
+     * is active, that recompute would race the agent's own idle-driven diff, so this falls back
+     * to just re-showing the latest recorded diff instead — see [FileSnapshotService.refreshVfsAndComputeDiffIfIdle].
      */
     fun refreshDiff() {
         val shouldShowEmpty = currentDiff == null
 
         ApplicationManager.getApplication().executeOnPooledThread {
+            if (!historyCleared) {
+                val fresh = snapshotService.refreshVfsAndComputeDiffIfIdle()
+                if (fresh != null && fresh.changes.isNotEmpty()) {
+                    showDiffOnEdt(fresh) { historyCleared = false }
+                    return@executeOnPooledThread
+                }
+            }
+
             val latest = snapshotService.getLatestDiff()
             if (latest != null && latest.changes.isNotEmpty()) {
                 showDiffOnEdt(latest) { historyCleared = false }

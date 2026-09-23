@@ -103,6 +103,21 @@ class FileSnapshotService(private val project: Project) : Disposable {
         }
     }
 
+    /**
+     * Recomputes a diff straight from disk for manual refresh / tab-selection callers, but only
+     * when no session has an interaction in flight. Doing this unconditionally raced the agent's
+     * own idle-driven diff and could duplicate or steal a still-open interaction's baseline (see
+     * [GlobalInteractionCoordinator]); gating on [GlobalInteractionCoordinator.hasActiveInteraction]
+     * keeps that fixed while still surfacing changes made outside any agent interaction (e.g.
+     * manual edits) once everything is idle. Returns null while a session is active, so callers
+     * should fall back to the last recorded diff.
+     */
+    fun refreshVfsAndComputeDiffIfIdle(): InteractionDiff? = submitAndGet {
+        if (interactionCoordinator.hasActiveInteraction()) return@submitAndGet null
+        refreshProjectVfs()
+        computeDiffInternal()
+    }
+
     /** Queues completion immediately without blocking callers such as the EDT. */
     fun finishInteractionAsync(sessionId: String, onFinished: (InteractionDiff?) -> Unit) {
         if (executor.isShutdown) {
@@ -388,8 +403,8 @@ class FileSnapshotService(private val project: Project) : Disposable {
     }
 
     private fun finishInteractionInternal(sessionId: String): InteractionDiff? {
-        refreshProjectVfs()
         val attribution = interactionCoordinator.finish(sessionId) ?: return null
+        refreshProjectVfs()
         return computeDiffInternal(attribution)
     }
 
