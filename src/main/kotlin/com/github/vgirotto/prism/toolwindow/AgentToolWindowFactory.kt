@@ -442,22 +442,8 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
     private fun validManager(toolWindow: ToolWindow, requestedManager: ContentManager?): ContentManager =
         requestedManager?.takeUnless { it.isDisposed } ?: toolWindow.contentManager
 
-    private fun findActiveContent(project: Project, toolWindow: ToolWindow): Content? {
-        val contents = toolWindow.contentManager.contentsRecursively
-            .filterNot(GlobalDiffContentHost::isGlobalDiff)
-        val focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
-        if (focusOwner != null) {
-            contents.firstOrNull {
-                focusOwner === it.component || SwingUtilities.isDescendingFrom(focusOwner, it.component)
-            }?.let { return it }
-        }
-
-        val activeId = AgentProcessManager.getInstance(project).activeSessionId
-        if (activeId != null) {
-            contents.firstOrNull { it.getUserData(SESSION_ID_KEY) == activeId }?.let { return it }
-        }
-        return toolWindow.contentManager.selectedContent
-    }
+    private fun findActiveContent(project: Project, toolWindow: ToolWindow): Content? =
+        resolveActiveSessionContent(project, toolWindow)
 
     private fun createMoveSplitAction(
         project: Project,
