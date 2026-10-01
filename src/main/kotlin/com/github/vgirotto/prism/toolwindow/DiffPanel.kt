@@ -183,7 +183,7 @@ class DiffPanel(private val project: Project, private val onHistoryCleared: () -
         ApplicationManager.getApplication().executeOnPooledThread {
             if (!historyCleared) {
                 val fresh = snapshotService.refreshVfsAndComputeDiffIfIdle()
-                if (fresh != null && fresh.changes.isNotEmpty()) {
+                if (fresh != null) {
                     showDiffOnEdt(fresh) { historyCleared = false }
                     return@executeOnPooledThread
                 }

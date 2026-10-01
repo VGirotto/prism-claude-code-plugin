@@ -115,7 +115,9 @@ class FileSnapshotService(private val project: Project) : Disposable {
     fun refreshVfsAndComputeDiffIfIdle(): InteractionDiff? = submitAndGet {
         if (interactionCoordinator.hasActiveInteraction()) return@submitAndGet null
         refreshProjectVfs()
-        computeDiffInternal()
+        val changes = computeChangesInternal()
+        val latest = getLatestDiff()
+        latest?.copy(changes = changes) ?: InteractionDiff(0, System.currentTimeMillis(), changes)
     }
 
     /** Queues completion immediately without blocking callers such as the EDT. */
@@ -308,12 +310,11 @@ class FileSnapshotService(private val project: Project) : Disposable {
         }
     }
 
-    private fun computeDiffInternal(
-        attribution: InteractionAttribution = InteractionAttribution(emptyList()),
-    ): InteractionDiff {
-        val basePath = project.basePath ?: return emptyDiff()
-        val tempDir = snapshotDir ?: return emptyDiff()
-        if (snapshotHashes.isEmpty()) return emptyDiff()
+    /** Reads the baseline and current files without changing history or snapshot state. */
+    private fun computeChangesInternal(): List<FileDiffEntry> {
+        val basePath = project.basePath ?: return emptyList()
+        val tempDir = snapshotDir ?: return emptyList()
+        if (snapshotHashes.isEmpty()) return emptyList()
 
         val changes = mutableListOf<FileDiffEntry>()
 
@@ -374,24 +375,19 @@ class FileSnapshotService(private val project: Project) : Disposable {
             }
         }
 
-        if (changes.isEmpty()) return emptyDiff()
+        return changes.sortedBy { it.path }
+    }
 
-        // Sync snapshot: remove deleted entries so they don't reappear in future diffs
-        val deletedPaths = changes.filter { it.status == ChangeStatus.DELETED }.map { it.path }
-        if (deletedPaths.isNotEmpty()) {
-            val mutableHashes = snapshotHashes.toMutableMap()
-            for (path in deletedPaths) {
-                mutableHashes.remove(path)
-                File(tempDir, path).let { if (it.exists()) it.delete() }
-            }
-            snapshotHashes = mutableHashes
-            log.info("Pruned ${deletedPaths.size} deleted entries from snapshot index")
-        }
+    private fun finishInteractionInternal(sessionId: String): InteractionDiff? {
+        val attribution = interactionCoordinator.finish(sessionId) ?: return null
+        refreshProjectVfs()
+        val changes = computeChangesInternal()
+        if (changes.isEmpty()) return emptyDiff()
 
         val diff = InteractionDiff(
             interactionIndex = diffHistory.size + 1,
             timestamp = System.currentTimeMillis(),
-            changes = changes.sortedBy { it.path },
+            changes = changes,
             sessionName = attribution.sessionNames.singleOrNull().orEmpty(),
             sessionNames = attribution.sessionNames,
         )
@@ -400,12 +396,6 @@ class FileSnapshotService(private val project: Project) : Disposable {
         }
         log.info("Diff: ${changes.size} changes (interaction #${diff.interactionIndex})")
         return diff
-    }
-
-    private fun finishInteractionInternal(sessionId: String): InteractionDiff? {
-        val attribution = interactionCoordinator.finish(sessionId) ?: return null
-        refreshProjectVfs()
-        return computeDiffInternal(attribution)
     }
 
     private fun fullCopy(
