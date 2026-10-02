@@ -319,17 +319,15 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 disposable
             )
 
+            // Each key is bound for both settings of "Override IDE shortcuts" (see TerminalKeyBindings).
+            // Escape is not among them: its handlers above also give way to popups and to the
+            // held-key gate.
+            val keys = TerminalKeyBindings(terminalWidget, disposable)
+
             // Shift+Enter sends CSI u escape sequence for newline without submitting
-            val shiftEnterAction = object : DumbAwareAction() {
-                override fun actionPerformed(e: AnActionEvent) {
-                    binding.sendText("\u001b[13;2u")
-                }
+            keys.bind(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK)) {
+                binding.sendText("\u001b[13;2u")
             }
-            shiftEnterAction.registerCustomShortcutSet(
-                CustomShortcutSet(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK)),
-                terminalWidget.component,
-                disposable
-            )
 
             // Ctrl+V is handled specially per platform (see below). The rest are
             // CLI shortcuts IntelliJ intercepts before they reach the PTY, so we
@@ -346,16 +344,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             )
 
             for ((keyStroke, sequence) in cliShortcuts) {
-                val action = object : DumbAwareAction() {
-                    override fun actionPerformed(e: AnActionEvent) {
-                        binding.sendText(sequence)
-                    }
-                }
-                action.registerCustomShortcutSet(
-                    CustomShortcutSet(keyStroke),
-                    terminalWidget.component,
-                    disposable
-                )
+                keys.bind(keyStroke) { binding.sendText(sequence) }
             }
 
             // Ctrl+V: on Linux IntelliJ swallows the keystroke before it reaches
@@ -363,24 +352,13 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             // process, so we paste from the JVM clipboard ourselves. On macOS and
             // Windows the native passthrough works well (Cmd+V pastes text, Ctrl+V
             // pastes images via the agent CLI), so we leave it untouched.
-            val pasteAction = if (SystemInfo.isLinux) {
-                object : DumbAwareAction() {
-                    override fun actionPerformed(e: AnActionEvent) {
-                        handleSmartPaste(binding)
-                    }
-                }
-            } else {
-                object : DumbAwareAction() {
-                    override fun actionPerformed(e: AnActionEvent) {
-                        binding.sendText("\u0016")
-                    }
+            keys.bind(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK)) {
+                if (SystemInfo.isLinux) {
+                    handleSmartPaste(binding)
+                } else {
+                    binding.sendText("\u0016")
                 }
             }
-            pasteAction.registerCustomShortcutSet(
-                CustomShortcutSet(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK)),
-                terminalWidget.component,
-                disposable
-            )
 
             val toolbar = AgentToolbar(project, binding)
             val terminalWithToolbar = JPanel(BorderLayout()).apply {
