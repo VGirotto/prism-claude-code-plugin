@@ -1,6 +1,7 @@
 package com.github.vgirotto.prism.toolwindow
 
 import com.github.vgirotto.prism.i18n.PrismBundle
+import com.github.vgirotto.prism.icons.PrismIcons
 import com.github.vgirotto.prism.model.AgentCli
 import com.github.vgirotto.prism.services.AgentProcessManager
 import com.github.vgirotto.prism.services.AgentSettingsState
@@ -8,6 +9,9 @@ import com.github.vgirotto.prism.services.ClaudeValidationService
 import com.github.vgirotto.prism.services.CodexValidationService
 import com.github.vgirotto.prism.services.FileSnapshotService
 import com.github.vgirotto.prism.services.ResolvedCliCommand
+import com.github.vgirotto.prism.services.session.ChatSessionTracker
+import com.github.vgirotto.prism.services.session.TabTitle
+import com.github.vgirotto.prism.services.session.newSessionStrategy
 import com.intellij.icons.AllIcons
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -35,6 +39,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.JBTerminalWidget
 import com.intellij.ui.JBSplitter
+import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import java.awt.BorderLayout
@@ -74,6 +79,11 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         /** An older IDE gets no entry, since its console font page errors out on open anyway. */
         internal fun supportsDedicatedTerminalFontSettings(build: BuildNumber): Boolean =
             build >= TERMINAL_FONT_SETTINGS_SINCE_BUILD
+
+        /** Marks the single Conversation History tab. Chat tabs take their titles from the agent
+         *  now, so one could legitimately be *called* "History" — identifying it by display name
+         *  would then reveal a chat instead of opening history. */
+        val HISTORY_TAB_KEY = Key.create<Boolean>("PrismHistoryTab")
 
         private var sessionCounter = 0
 
@@ -365,11 +375,19 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 }
             }
 
+            // `Chat #N` is the placeholder, not the name: the tab opens numbered and takes the
+            // name the agent shows in its terminal title as soon as it has one (see
+            // [ChatSessionTracker]); an agent title with no name puts the number back.
             val sessionName = nextSessionName()
             val content = toolWindow.contentManager.factory.createContent(
                 splitter, sessionName, false
             )
             content.isCloseable = true
+            // Which agent is behind this tab, at a glance. Tool-window tabs hide content icons
+            // unless asked to show them.
+            content.icon = PrismIcons.forCli(cli)
+            content.putUserData(ToolWindow.SHOW_CONTENT_ICON, true)
+            content.description = cli.displayName()
             content.putUserData(DIFF_PANEL_KEY, diffPanel)
 
             // The session lives and dies with the tab, and only tab *disposal* means the
@@ -388,6 +406,19 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                 Disposer.dispose(disposable)
             }
 
+            // Follow the agent's session from its terminal title. The listener goes on before the
+            // terminal starts (below), so the first title — a resumed chat's name — is not missed.
+            val strategy = cli.newSessionStrategy()
+            val tracker = ChatSessionTracker(
+                strategy,
+                placeholder = sessionName,
+                show = { title -> applyTabTitle(content, cli, title) },
+            )
+            val terminal = terminalWidget.terminal
+            terminal.addApplicationTitleListener(tracker)
+            Disposer.register(disposable) { terminal.removeApplicationTitleListener(tracker) }
+            Disposer.register(disposable, tracker)
+
             toolWindow.contentManager.addContent(content)
             toolWindow.contentManager.setSelectedContent(content)
 
@@ -395,7 +426,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             ApplicationManager.getApplication().executeOnPooledThread {
                 try {
                     val pm = AgentProcessManager.getInstance(project)
-                    val result = pm.createSession(sessionName, cli, resolvedCommand)
+                    val result = pm.createSession(sessionName, cli, resolvedCommand, strategy)
 
                     content.putUserData(SESSION_ID_KEY, result.sessionId)
 
@@ -408,6 +439,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
                     }
 
                     pm.setActiveSession(result.sessionId)
+                    pm.getSession(result.sessionId)?.let(tracker::attach)
 
                     ApplicationManager.getApplication().invokeLater {
                         try {
@@ -430,10 +462,21 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         }
     }
 
+    /**
+     * Put [title] on the chat tab: the clipped name as the label, and the whole name plus the agent
+     * it belongs to as the tooltip. With no name, the tooltip is just the agent.
+     */
+    private fun applyTabTitle(content: Content, cli: AgentCli, title: TabTitle) {
+        content.displayName = title.label
+        content.description = title.name
+            ?.let { PrismBundle.message("toolwindow.tab.tooltip", cli.displayName(), it) }
+            ?: cli.displayName()
+    }
+
     private fun showHistoryTab(project: Project, toolWindow: ToolWindow) {
         for (i in 0 until toolWindow.contentManager.contentCount) {
             val content = toolWindow.contentManager.getContent(i)
-            if (content?.displayName == PrismBundle.message("toolwindow.tab.history")) {
+            if (content?.getUserData(HISTORY_TAB_KEY) == true) {
                 toolWindow.contentManager.setSelectedContent(content)
                 // History is scoped to the active session's CLI, which may have changed
                 // to another agent since this tab was built.
@@ -447,6 +490,9 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
             historyPanel, PrismBundle.message("toolwindow.tab.history"), false
         )
         content.isCloseable = true
+        content.putUserData(HISTORY_TAB_KEY, true)
+        content.icon = AllIcons.Vcs.History
+        content.putUserData(ToolWindow.SHOW_CONTENT_ICON, true)
         toolWindow.contentManager.addContent(content)
         toolWindow.contentManager.setSelectedContent(content)
         historyPanel.loadHistory()
