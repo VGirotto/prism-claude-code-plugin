@@ -303,6 +303,7 @@ class AgentToolWindowFactory : ToolWindowFactory, DumbAware {
         try {
             val settingsProvider = JBTerminalSystemSettingsProvider()
             val terminalWidget = JBTerminalWidget(project, settingsProvider, disposable)
+            terminalWidget.addMessageFilter(TerminalFileLinkFilter.forProject(project))
             val binding = SessionUiBinding(project, cli)
 
             // The picker takes focus so the press that closes it never reaches the terminal;
