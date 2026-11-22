@@ -70,17 +70,19 @@ class AgentSessionStrategyTest {
         assertEquals(
             listOf(
                 "-c", CodexSessionStrategy.HOME_REPORT, "sh", tab.codexHome.toString(),
-                "/bin/codex", "--model", "o3", "-c", CodexSessionStrategy.TITLE_OVERRIDE,
+                "/bin/codex", "-c", CodexSessionStrategy.WORKSPACE_OVERRIDE, "--model", "o3",
+                "-c", CodexSessionStrategy.TITLE_OVERRIDE,
             ),
             launch.arguments,
         )
     }
 
     @Test
-    fun `older or unknown Codex versions launch as configured`() {
-        assertEquals(codex(), codexStrategy(version = "0.158.9").launchCommand(tab, codex()))
+    fun `older or unknown Codex versions still get IDE file navigation without title items`() {
+        val expected = codex("-c", CodexSessionStrategy.WORKSPACE_OVERRIDE)
+        assertEquals(expected, codexStrategy(version = "0.158.9").launchCommand(tab, codex()))
         CodexSessionStrategy.clearCacheForTests()
-        assertEquals(codex(), codexStrategy(version = null).launchCommand(tab, codex()))
+        assertEquals(expected, codexStrategy(version = null).launchCommand(tab, codex()))
     }
 
     @Test
@@ -102,7 +104,41 @@ class AgentSessionStrategyTest {
         assertFalse(CodexSessionStrategy.setsTerminalTitle(listOf("tui.terminal_title")))
 
         val own = codex("-c", "tui.terminal_title=[]")
-        assertEquals(own, codexStrategy().launchCommand(tab, own))
+        assertEquals(
+            codex("-c", CodexSessionStrategy.WORKSPACE_OVERRIDE, "-c", "tui.terminal_title=[]"),
+            codexStrategy().launchCommand(tab, own),
+        )
+    }
+
+    @Test
+    fun `workspace default precedes an explicit user choice in every config flag form`() {
+        for (value in listOf("true", "false")) {
+            for (flags in listOf(
+                listOf("-c", "features.tui_workspace=$value"),
+                listOf("--config", "features.tui_workspace=$value"),
+                listOf("--config=features.tui_workspace=$value"),
+                listOf("-cfeatures.tui_workspace=$value"),
+            )) {
+                val command = codex(*(flags + listOf("resume", "thread-123")).toTypedArray())
+                val launch = codexStrategy().launchCommand(tab, command)
+                val args = launch.arguments.drop(5)
+                assertEquals(
+                    listOf("-c", CodexSessionStrategy.WORKSPACE_OVERRIDE) + command.arguments +
+                        listOf("-c", CodexSessionStrategy.TITLE_OVERRIDE),
+                    args,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `internal config stays before a literal prompt separator`() {
+        val launch = codexStrategy().launchCommand(tab, codex("resume", "thread-123", "--", "literal prompt"))
+        assertEquals(
+            listOf("-c", CodexSessionStrategy.WORKSPACE_OVERRIDE, "resume", "thread-123",
+                "-c", CodexSessionStrategy.TITLE_OVERRIDE, "--", "literal prompt"),
+            launch.arguments.drop(5),
+        )
     }
 
     @Test
@@ -164,7 +200,8 @@ class AgentSessionStrategyTest {
         assertTrue(reported.endsWith("\n"))
         assertEquals(custom.toRealPath(), Path.of(reported.removeSuffix("\n")).toRealPath())
         assertEquals(
-            listOf("custom home", "--model", "o 3", "-c", CodexSessionStrategy.TITLE_OVERRIDE),
+            listOf("custom home", "-c", CodexSessionStrategy.WORKSPACE_OVERRIDE, "--model", "o 3",
+                "-c", CodexSessionStrategy.TITLE_OVERRIDE),
             dir.resolve("ran").toFile().readLines(),
         )
 
