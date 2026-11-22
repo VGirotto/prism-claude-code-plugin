@@ -41,20 +41,27 @@ class CodexSessionStrategy(
     @Volatile private var titleItemsSet = false
 
     override fun launchCommand(tab: TabSessionFiles, command: ResolvedCliCommand): ResolvedCliCommand {
+        // Keep local destinations visible so TerminalFileLinkFilter can open them in the IDE.
+        // Codex's workspace otherwise consumes clicks and opens its own terminal reader.
+        // Set a default before user config flags so an explicit choice takes precedence.
+        // Keep title options before `--`, which may precede a literal prompt.
+        val separator = command.arguments.indexOf("--").let { if (it < 0) command.arguments.size else it }
+        val ideCommand = command.copy(arguments = listOf("-c", WORKSPACE_OVERRIDE) + command.arguments)
         if (setsTerminalTitle(command.arguments)) {
             log.info("Codex command already sets tui.terminal_title: the tab keeps its number")
-            return command
+            return ideCommand
         }
         if (!supportsTitleItems(command.executable)) {
             log.info("Codex older than $MIN_VERSION: the tab keeps its number")
-            return command
+            return ideCommand
         }
         homeReport = tab.codexHome
         titleItemsSet = true
         return ResolvedCliCommand(
             executable = "/bin/sh",
             arguments = listOf("-c", HOME_REPORT, "sh", tab.codexHome.toString(), command.executable) +
-                command.arguments + listOf("-c", TITLE_OVERRIDE),
+                ideCommand.arguments.take(separator + 2) + listOf("-c", TITLE_OVERRIDE) +
+                ideCommand.arguments.drop(separator + 2),
         )
     }
 
@@ -97,6 +104,8 @@ class CodexSessionStrategy(
         const val MIN_VERSION = "0.159.0"
 
         const val TITLE_OVERRIDE = """tui.terminal_title=["thread-id","thread-name"]"""
+
+        internal const val WORKSPACE_OVERRIDE = "features.tui_workspace=false"
 
         /**
          * `sh -c` script: `$1` is the file to record the home in, the rest is the Codex command.
