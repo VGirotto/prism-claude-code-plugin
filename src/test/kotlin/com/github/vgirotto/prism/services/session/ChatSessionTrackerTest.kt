@@ -34,6 +34,7 @@ class ChatSessionTrackerTest {
         override fun launchEnvironment() = emptyMap<String, String?>()
         override fun parseTitle(title: String) = parser(title)
         override fun reportsSwitches() = events != null
+        override fun followsSwitches() = events != null
         override fun identityEvents(tab: TabSessionFiles) = events
         override fun resolveIdentity(hint: IdHint): SessionIdentity? {
             resolveCalls++
@@ -72,6 +73,23 @@ class ChatSessionTrackerTest {
             listOf(TabTitle("Review the branch", "Review the branch"), TabTitle("Chat #3", null)),
             shown,
         )
+    }
+
+    @Test
+    fun `a restored chat's name is the session's from attach until a title replaces it`() {
+        val restored = TabTitle("Fix login", "Fix login")
+        val tracker = ChatSessionTracker(
+            FakeStrategy(ClaudeTitleParser::parse), "Chat #3", { shown += it }, scheduler = scheduler, initial = restored,
+        )
+        val session = session()
+
+        tracker.attach(session)
+        assertEquals("Fix login", session.name)
+        assertEquals(restored, tracker.title)
+
+        tracker.onApplicationTitleChanged("✳ Claude Code")
+        assertEquals("Chat #3", session.name)
+        assertEquals(listOf(TabTitle("Chat #3", null)), shown)
     }
 
     @Test
